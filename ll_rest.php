@@ -3,6 +3,52 @@
 // Attempt to lock a number before purchasing 
 // This prevents anyone else from buying the same number at the same time
 
+function get_next_number( WP_REST_Request $request )
+{
+	global $wpdb;
+
+
+	$success = false;
+	
+    $user_id = get_current_user_id();
+  
+  
+	$row = $wpdb->get_row("SELECT * FROM wp_lotto_numbers WHERE state = 'UNUSED'");
+	
+	
+	if( isset($row) )
+	{
+		$success = $wpdb->update( 
+			'wp_lotto_numbers', 
+			array( 
+				'state' => 'LOCKED',   
+				'state_change_time' => time(), 
+				'user_id' => $user_id,
+			), 
+			array( 
+				'ID' => $row->ID,
+				'state' => 'UNUSED'
+			)
+		);
+		
+	}
+	 
+	if( $success )
+	{
+		return array( 		
+		 'success' => true,
+		 'number' => $row->ID,
+		);
+	}
+	else{
+		return array( 		
+		 'success' => false,
+		);
+	}	
+		
+}
+
+/*
 function try_lock_number( WP_REST_Request $request ) 
 {
 	global $wpdb;
@@ -11,7 +57,7 @@ function try_lock_number( WP_REST_Request $request )
     $user_id = get_current_user_id(); //$request->get_param( 'user_id' );
   
 	$locked = $wpdb->update( 
-		'wp_lionslotto_numbers', 
+		'wp_lotto_numbers', 
 		array( 
 			'state' => 'LOCKED',   
 			'state_change_time' => time(), 
@@ -40,6 +86,7 @@ function try_lock_number( WP_REST_Request $request )
 		);
 	}	
 }
+*/
 
 function create_checkout_session( WP_REST_Request $request ) {
 			
@@ -48,7 +95,7 @@ function create_checkout_session( WP_REST_Request $request ) {
 	$options = get_option( 'lionslotto_settings_fields' );
 	if( $options )
 	{	
-		$stripe_key= $options['stripe_key'];
+		$stripe_key= $options['stripe_secret_key'];
 		//$stripe_key= 'sk_test_4eC39HqLyjWDarjtT1zdp7dc';
 	
 		\Stripe\Stripe::setApiKey($stripe_key); 
@@ -59,18 +106,17 @@ function create_checkout_session( WP_REST_Request $request ) {
 		global $wpdb;
 		//check that the user has the lock on the number
 		//calculate a verification token for the purchase
-		$token = random_int(0, PHP_INT_MAX);
+		//$token = random_int(0, PHP_INT_MAX);
 		
 		
 		$is_buying = $wpdb->update( 
-			'wp_lionslotto_numbers', 
+			'wp_lotto_numbers', 
 			array( 
 				'state' => 'BUYING',   
-				'state_change_time' => time(),
-				'token' => $token,
+				'state_change_time' => time(),				
 			), 
 			array( 
-				'display_value' => $ticket_id,
+				'ID' => $ticket_id,
 				'user_id' => $user_id,
 				'state' => 'LOCKED',			
 			)
@@ -98,12 +144,14 @@ function create_checkout_session( WP_REST_Request $request ) {
 				'quantity' => 1,
 				]],
 			'mode' => 'payment',
-			'success_url' => "$site_url/success/?ticket_id=$ticket_id&token=$token", 
-			'cancel_url' => "$site_url/cancel/?ticket_id=$ticket_id",	
+			'success_url' => "$site_url/lotto-purchase-success/?ticket_id=$ticket_id", 
+			'cancel_url' => "$site_url/lotto-purchase-cancel/?ticket_id=$ticket_id",	
 			]);
 
+/*
+TODO create an entry in the purchase table
 			$wpdb->update( 
-				'wp_lionslotto_numbers',
+				'wp_sdfsafsaflionslotto_numbers',
 				array('session_id' => $session->id,
 				),
 				array( 
@@ -112,7 +160,7 @@ function create_checkout_session( WP_REST_Request $request ) {
 					'state' => 'BUYING',			
 				)
 			);
-
+*/
 			$result = array(
 				'id' => $session->id,
 			); 
@@ -133,19 +181,21 @@ function complete_purchase( WP_REST_Request $request )
 	
 	$user_id = get_current_user_id();
 	$ticket_id = $request->get_param( 'ticket_id');
-	$token = $request->get_param( 'token' );
+
 	
-	$session_id = $wpdb->get_var( "SELECT session_id FROM wp_lionslotto_numbers WHERE user_id=$user_id" );
+	$session_id = $wpdb->get_var( "SELECT session_id FROM wp_lotto_stripe_purchases WHERE user_id=$user_id" );
 	
 	//want to check token matches
 	
 	$bought = false;
 	
-	
-	
-	//And check with STRIPE site 	
-	$stripe_key= $options['stripe_key'];
-	$session = null;
+	$stripe_key = null;
+	$options = get_option( 'lionslotto_settings_fields' );
+	if( $options )
+	{	
+		$stripe_key= $options['stripe_secret_key'];
+	}
+
 	$blah = "yay";
 	
 	try {
@@ -161,7 +211,7 @@ function complete_purchase( WP_REST_Request $request )
 		
 		//$session = $stripe->checkout->sessions->retrieve( $session_id, array('api_key' => $stripe_key), array('api_key' => $stripe_key) );
 		
-		$session = \Stripe\Checkout\Session::retrieve( $session_id,null, array('api_key' => $stripe_key) );
+		$session = \Stripe\Checkout\Session::retrieve( $session_id ); //,null, array('api_key' => $stripe_key) );
 	}
 	catch (Exception $e) {
 		//echo 'Caught exception: ',  $e->getMessage(), "\n";
@@ -183,7 +233,7 @@ function complete_purchase( WP_REST_Request $request )
 		{
 		
 		$bought = $wpdb->update( 
-			'wp_lionslotto_numbers', 
+			'wp_lotto_numbers', 
 			array( 
 				'state' => 'BOUGHT',   
 				'state_change_time' => time(), 	
@@ -230,8 +280,8 @@ function cancel_purchase( WP_REST_Request $request )
 			
 	$cancelled = $wpdb->query( 
 		"
-		UPDATE wp_lionslotto_numbers 
-		SET state = 'UNUSED', state_change_time = NULL, user_id = NULL, token = NULL		
+		UPDATE wp_lotto_numbers 
+		SET state = 'UNUSED', state_change_time = NULL, user_id = NULL		
 		WHERE (state = 'LOCKED' OR state = 'BUYING')
 		AND user_id = $user_id
 		"
@@ -267,6 +317,8 @@ function lionslotto_is_member() {
 //register server api
 
 add_action( 'rest_api_init', function () {
+	
+	/*
   register_rest_route( 'lionslotto/v1', '/lock_number', 
 		array(
 			'methods' => 'POST',
@@ -274,6 +326,16 @@ add_action( 'rest_api_init', function () {
 			'permission_callback' => 'lionslotto_is_member',		
 		)	
   );
+  */
+  
+  register_rest_route( 'lionslotto/v1', '/get_next_number', 
+		array(
+			'methods' => 'POST',
+			'callback' => 'get_next_number',
+			'permission_callback' => 'lionslotto_is_member',		
+		)	
+  );
+  
   
    register_rest_route( 'lionslotto/v1', '/create-checkout-session', 
 		array(

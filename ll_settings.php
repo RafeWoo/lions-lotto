@@ -27,18 +27,22 @@ function lionslotto_register_settings() {
 	add_settings_section( 'stripe_settings', 'Stripe Settings', 'lionslotto_section_stripe_text', 'lionslotto_settings_section' );
 	  
 	add_settings_field( 'lionslotto_setting_stripe_public_key', 'Stripe Public Key', 'lionslotto_setting_stripe_public_key', 'lionslotto_settings_section', 'stripe_settings' ); 
-    add_settings_field( 'lionslotto_setting_stripe_key', 'Stripe Secret Key', 'lionslotto_setting_stripe_key', 'lionslotto_settings_section', 'stripe_settings' );
+    add_settings_field( 'lionslotto_setting_stripe_secret_key', 'Stripe Secret Key', 'lionslotto_setting_stripe_secret_key', 'lionslotto_settings_section', 'stripe_settings' );
    
 }
 
 function lionslotto_validate_settings( $input ) {
-    $newinput['stripe_key'] = trim( $input['stripe_key'] );
-    if ( ! preg_match( '/^[_A-Za-z0-9]{32}$/i', $newinput['stripe_key'] ) ) {
-        $newinput['stripe_key'] = 'invalid key';
+    $newinput['stripe_secret_key'] = trim( $input['stripe_secret_key'] );
+    if ( ! preg_match( '/^[A-Za-z0-9_]*$/i', $newinput['stripe_secret_key'] ) ) {
+       $newinput['stripe_secret_key'] = 'invalid key';
     }
+	else
+	{
+		//encrypt the key somehow maybe?
+	}
 	
 	$newinput['stripe_public_key'] = trim( $input['stripe_public_key'] );
-    if ( ! preg_match( '/^[_A-Za-z0-9]{32}$/i', $newinput['stripe_public_key'] ) ) {
+    if ( ! preg_match( '/^[A-Za-z0-9_]*$/i', $newinput['stripe_public_key'] ) ) {
         $newinput['stripe_public_key'] = 'invalid key';
     }
 	
@@ -49,14 +53,19 @@ function lionslotto_section_stripe_text() {
     echo '<p>Here you can set all the options for using the Stripe API</p>';
 }
 
-function lionslotto_setting_stripe_key() {
-    $options = get_option( 'lionslotto_settings_fields' , array( 'stripe_key' => "please enter stripe key") );
-	$key_value = esc_attr( $options['stripe_key'] );	    
-    echo "<input size='35' id='lionslotto_setting_stripe_key' name='lionslotto_settings_fields[stripe_key]' type='text' value='$key_value' />";
+function lionslotto_setting_stripe_secret_key() {
+    $options = get_option( 'lionslotto_settings_fields' , array( 'stripe_secret_key' => "please enter stripe secret key") );	
+	$key_value = esc_attr( $options['stripe_secret_key'] );	    
+	if( $key_value != 'invalid key')
+	{
+		$key_value = '***********************************';
+	}
+	
+    echo "<input size='140' id='lionslotto_setting_stripe_secret_key' name='lionslotto_settings_fields[stripe_secret_key]' type='text' value='$key_value' />";
 }
 
 function lionslotto_setting_stripe_public_key() {
     $options = get_option( 'lionslotto_settings_fields' , array( 'stripe_public_key' => "please enter stripe public key") );
 	$key_value = esc_attr( $options['stripe_public_key'] );	    
-    echo "<input size='35' id='lionslotto_setting_stripe_public_key' name='lionslotto_settings_fields[stripe_public_key]' type='text' value='$key_value' />";
+    echo "<input size='140' id='lionslotto_setting_stripe_public_key' name='lionslotto_settings_fields[stripe_public_key]' type='text' value='$key_value' />";
 }

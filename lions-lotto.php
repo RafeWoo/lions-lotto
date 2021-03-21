@@ -86,16 +86,34 @@ register_activation_hook( __FILE__, 'lionslotto_on_activation' );
 function lionslotto_on_activation()
 {
 	//create database tables
-	//lionslotto_create_db();	
-	lionslotto_create_numbers_table();
-	
+	lionslotto_init_database();	
+
+	lionslotto_init_roles();
 	
 	lionslotto_init_cron_jobs();
 }
 
+//
+
+//////////////////////////////////////////////////////
+//lotto roles and caps
+
+function lionslotto_init_roles()
+{
+	add_role(
+		'lionslotto_admin',
+		'Lotto Admin',
+		array(
+			'read'         => true,  // true allows this capability
+			'edit_lotto'   => true,
+		)
+	);
+}
+
+
 
 ////////////////////////////////////////////////////////////////////
-//I can probably get rid of this section
+
 
 function lionslotto_init_cron_jobs()
 {
@@ -134,8 +152,8 @@ function reset_lapsed_locked_numbers()
 	
 	$wpdb->query( 
 		"
-		UPDATE wp_lionslotto_numbers 
-		SET state = 'UNUSED', state_change_time = NULL, user_id = NULL, token = NULL		
+		UPDATE wp_lotto_numbers 
+		SET state = 'UNUSED', state_change_time = NULL, user_id = NULL		
 		WHERE (state = 'LOCKED' OR state = 'BUYING')
 		AND ($time_now - state_change_time) > $seconds_allowed		
 		"

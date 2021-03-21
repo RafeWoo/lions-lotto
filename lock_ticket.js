@@ -1,3 +1,5 @@
+
+
 function myClick(number) {
 		
 	//test whether can still buy selected number

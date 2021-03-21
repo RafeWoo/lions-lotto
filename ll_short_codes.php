@@ -1,8 +1,11 @@
 <?php 
-add_shortcode( 'lionslotto_grid', 'display_200_grid' );
-add_shortcode( 'lionslotto_purchase', 'display_200_purchase_form' );
-add_shortcode( 'lionslotto_success', 'lionslotto_handle_success');
-add_shortcode( 'lionslotto_cancel', 'lionslotto_handle_cancel');
+
+add_shortcode( 'lionslotto-user-display', 'lionslotto_display_user_info');
+
+//add_shortcode( 'lionslotto_grid', 'display_200_grid' );
+add_shortcode( 'lionslotto-purchase', 'lionslotto_purchase_form' );
+add_shortcode( 'lionslotto-success', 'lionslotto_handle_success');
+add_shortcode( 'lionslotto-cancel', 'lionslotto_handle_cancel');
 
 //queries database for all unused numbers
 function get_available_numbers()
@@ -25,7 +28,7 @@ function get_available_numbers()
 	return $numbers;
 }
 
-
+/*
 function display_200_grid() {
 		
 	$rest_url = get_site_url()."/wp-json/"."lionslotto/v1"; 
@@ -61,9 +64,10 @@ function display_200_grid() {
 	}
 	echo "</div>";	
 }
+*/
 
 ///////////////////////////////////////////////////////////////////////
-function display_200_purchase_form() {
+function lionslotto_purchase_form() {
 			
 	if( isset( $_GET['number'] ) ) {	
 						     
@@ -80,7 +84,7 @@ function display_200_purchase_form() {
 		$wp_nonce = wp_create_nonce( 'wp_rest' );		
 
 		echo "<script src=\"https://js.stripe.com/v3/\"></script>";  //load the stripe api		
-		echo "<p>You are buying number ".$buying.".</p>";
+		echo "<p>You are buying an entry into the Southam Lions 500 Club</p>";
 		echo "<p>Click on the button to continue to the Stripe payments page</p>";
 		echo "<button type=\"button\" id=\"checkout-button\">Checkout</button>";		
 		echo "<script type=\"application/javascript\" >";
@@ -103,11 +107,11 @@ function lionslotto_handle_success(){
 	
 	$user_id = get_current_user_id();
 	$ticket_id = $_GET['ticket_id'];
-	$token = $_GET['token'];
+	
 	
 	$rest_url = get_site_url()."/wp-json/"."lionslotto/v1"; 
 	$wp_nonce = wp_create_nonce( 'wp_rest' );
-//	if( isset( $token) && isset($ticket_id) )
+	if( isset($ticket_id) )
 	{
 		
 	?>			
@@ -116,7 +120,7 @@ function lionslotto_handle_success(){
 	<?php
 			echo "var rest_url = \"$rest_url\";";
 			echo "var nonce = \"$wp_nonce\";";
-			echo "var purchase_data = { ticket_id:\"$ticket_id\", token:\"$token\"};";
+			echo "var purchase_data = { ticket_id:\"$ticket_id\"};";
 	?>
 				 fetch(
 					rest_url + "/complete_purchase", 
@@ -195,3 +199,71 @@ function lionslotto_handle_cancel()
 			</script>
 	<?php		
 }
+
+
+
+function lionslotto_display_logged_in_user_info()
+{
+	/*
+	<p><a href=<?php echo $buy_url ?> class="lotto-button">Buy A Ticket</a></p>
+	// can we load java script file in better way? - wp add inline_script
+	*/
+	$rest_url = get_site_url()."/wp-json/"."lionslotto/v1"; 	
+	$wp_nonce = wp_create_nonce( 'wp_rest' );
+	$buy_url = get_site_url()."/lotto-purchase"; //redirecting here
+	
+	?>
+	<h2>user logged in display</h2>
+	<?php lionslotto_display_user_ticket_info() ?>	
+	
+	
+		
+	<script type="application/javascript" >
+	<?php
+		echo "var rest_url = \"$rest_url\";\n";
+		echo "var nonce = \"$wp_nonce\";\n";
+		echo "var redirect_url = \"$buy_url\";\n";
+		echo "\n";
+		include dirname(__FILE__).'/get_ticket.js';
+		echo "\n";
+	?>
+	</script>
+	
+	<button class="lotto-button" onclick="get_ticket()">Buy Ticket</button><p id="gt_error"></p>
+	
+	<?php
+}
+
+function lionslotto_display_user_ticket_info()
+{
+	?>
+	<p>TODO show users tickets</p>
+	<?php
+}
+function lionslotto_display_logged_out_user_info()
+{
+	$lotto_url = get_site_url()."/lotto";
+	$login_url = get_site_url()."/login/?redirect_to=".urlencode($lotto_url);
+	?>
+	<h2>user logged out display</h2>
+	<p>The easiest way to take part in the Southam Lions 500 Club is to register your details with this website</p>
+	<p><a href=<?php echo $login_url ?> class="lotto-button">Login or Register</a></p>
+	<p>TODO INFO for buying manually</p>
+	<p>Alternatively contact this lion</p>
+	<?php
+}
+
+function lionslotto_display_user_info()
+{
+	if ( is_user_logged_in() ) { 
+		lionslotto_display_logged_in_user_info();
+	}
+	else {
+		lionslotto_display_logged_out_user_info();
+	}
+}
+
+
+
+
+
