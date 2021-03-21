@@ -71,10 +71,10 @@ use Stripe\Stripe;
 
 /////////////////////////////////////////////////////////////////////
 
-require_once "ll_settings.php"
-require_once "ll_rest.php"
-require_once "ll_short_codes.php"
-require_once "ll_database.php"
+require_once "ll_settings.php";
+require_once "ll_rest.php";
+require_once "ll_short_codes.php";
+require_once "ll_database.php";
 
 
 
@@ -85,7 +85,11 @@ register_activation_hook( __FILE__, 'lionslotto_on_activation' );
 
 function lionslotto_on_activation()
 {
-	lionslotto_create_db();	
+	//create database tables
+	//lionslotto_create_db();	
+	lionslotto_create_numbers_table();
+	
+	
 	lionslotto_init_cron_jobs();
 }
 
