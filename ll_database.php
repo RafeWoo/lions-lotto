@@ -43,14 +43,18 @@ function lionslotto_create_numbers_table()
 	$wpdb->query(
 		
 		"	
-		IF ( NOT EXISTS (SELECT * 
-            FROM INFORMATION_SCHEMA.TABLES  
-			WHERE TABLE_SCHEMA = 'testdb1'
-            AND  TABLE_NAME = '$table_name'))		
+		IF ( 
+			NOT EXISTS (
+				SELECT * 
+					FROM INFORMATION_SCHEMA.TABLES
+					WHERE TABLE_NAME = '$table_name'
+					
+				)			
+			)		
 		THEN
 			CREATE TABLE $table_name (
 				ID bigint(20) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
-				display_value tinyint(3) unsigned NOT NULL,				
+				display_value smallint(3) unsigned NOT NULL,				
 				state ENUM('UNUSED','LOCKED','BUYING','BOUGHT') DEFAULT 'UNUSED' NOT NULL
 			)$charset_collate;
 			
@@ -70,10 +74,10 @@ function lionslotto_create_numbers_table()
 
 
 /*
-
+//
 DECLARE counter INT DEFAULT 1;
 			 
-			
+		AND TABLE_SCHEMA = 'testdb1'	
 			
 		
 	
