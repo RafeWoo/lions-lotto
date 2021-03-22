@@ -149,7 +149,8 @@ function create_checkout_session( WP_REST_Request $request ) {
 			'cancel_url' => "$site_url/lotto-purchase-cancel/?ticket_id=$ticket_id",	
 			]);
 
-
+//TODO move this above and put purchase id into flow
+//And then update with session id here
 			$inserted = $wpdb->insert('wp_lotto_stripe_purchases', 
 				array(
 					'number_id' => $ticket_id,
@@ -182,105 +183,297 @@ function create_checkout_session( WP_REST_Request $request ) {
 	return $result;	
 }
 
-function complete_purchase( WP_REST_Request $request ) 
-{
+function update_db_complete_purchase( $user_id, $ticket_id )
+{		
+	$bought = 0;
+		
 	global $wpdb;
+	$session_id = $wpdb->get_var( "
+		SELECT session_id 
+		FROM wp_lotto_stripe_purchases 
+		WHERE user_id=$user_id   
+		AND number_id=$ticket_id
+		AND state='STARTED'
+		");
 	
-	$user_id = get_current_user_id();
-	$ticket_id = $request->get_param( 'ticket_id');
 
 	
-	$session_id = $wpdb->get_var( "SELECT session_id FROM wp_lotto_stripe_purchases WHERE user_id=$user_id" );
-	
-	//want to check token matches
-	
-	$bought = false;
-	
+
 	$stripe_key = null;
 	$options = get_option( 'lionslotto_settings_fields' );
 	if( $options )
 	{	
 		$stripe_key= $options['stripe_secret_key'];
-	}
-
-	$blah = "yay";
+	}	
 	
-	try {
+	\Stripe\Stripe::setApiKey($stripe_key); 						
+	$session = \Stripe\Checkout\Session::retrieve( $session_id ); 
 	
-		\Stripe\Stripe::setApiKey($stripe_key); 		
-		
-			
-		$session = \Stripe\Checkout\Session::retrieve( $session_id ); 
-		
-		if( isset($session) )
+	
+	if( isset($session) )
+	{		
+		$bought = $session->payment_status;
+		if( $session->payment_status == 'paid' )
 		{
-			if( $session->payment_status == "paid")
-			{
-				$purchase_complete_time = time();
+			$bought = 2;
+			$purchase_complete_time = time();
+			
+			//TODO - TRANSACTIONs
+			$updated1 = $wpdb->update( 
+				'wp_lotto_numbers', 
+				array( 
+					'state' => 'BOUGHT',   
+					'state_change_time' => $purchase_complete_time, 													
+				), 
+				array( 
+					'ID' => $ticket_id,
+					'user_id' => $user_id,						
+					'state' => 'BUYING',		
+				)
+			);	
 				
-				//TODO - TRANSACTION
-				$updated1 = $wpdb->update( 
+			if( $updated1 )
+			{
+				$bought = 3;
+				
+				$updated2 = $wpdb->update( 
+					'wp_lotto_stripe_purchases',
+					array( 
+						'state' => 'COMPLETE',
+						'purchase_time' => $purchase_complete_time,						
+					),
+					array(
+						'number_id' => $ticket_id,
+						'user_id' => $user_id,
+						'session_id' => $session->id,
+						'state' => 'STARTED',
+					)
+				);	
+
+				if( $updated2 )
+				{
+					$bought = 4;
+				}
+			}						
+		}
+	}
+	
+	
+	return $bought;
+}
+
+function update_db_cancel_purchase($user_id, $ticket_id)
+{
+	global $wpdb;
+	$updated1 = $wpdb->update( 
 					'wp_lotto_numbers', 
 					array( 
-						'state' => 'BOUGHT',   
-						'state_change_time' => $purchase_complete_time, 													
+						'state' => 'UNUSED',   
+						'state_change_time' => NULL,
+						'user_id' => NULL,
 					), 
 					array( 
 						'ID' => $ticket_id,
 						'user_id' => $user_id,						
 						'state' => 'BUYING',		
 					)
-				);	
+				);
 				
-				if( $updated1 )
-				{
-					$bought = $wpdb->update( 
-						'wp_lotto_stripe_purchases',
-						array( 
-							'state' => 'COMPLETE',
-							'purchase_time' => $purchase_complete_time,						
-						),
-						array(
-							'number_id' => $ticket_id,
-							'user_id' => $user_id,
-							'session_id' => $session_id,
-							'state' => 'STARTED',
-						)
-					);					
-				}						
-			}
-		}
+	$updated2 = $wpdb->update( 
+		'wp_lotto_stripe_purchases',
+		array(
+			'state' => 'CANCELLED',
+		),
+		array(
+			'number_id' => $ticket_id,
+			'user_id' => $user_id,
+			'state' => 'STARTED'
+		)
+	);	
+	
+		
+			
+	$cancelled = $updated1 and $updated2;
+	
+	return $cancelled;
+}
+
+
+function complete_purchase( WP_REST_Request $request ) 
+{
+	
+	$user_id = get_current_user_id();
+	$ticket_id = $request->get_param( 'ticket_id');
+
+	$error_message = "Unknown Error";
+	$bought = false;
+	
+	try {			
+		$bought = update_db_complete_purchase($user_id, $ticket_id);		
 	}	
 	catch (Exception $e) {
 		//echo 'Caught exception: ',  $e->getMessage(), "\n";
-		$blah = $e->getMessage();
+		$error_message = $e->getMessage();
 	}
 	
 	
-	if( $bought )
+	if( $bought == 4 )
 	{
 		return array( 
 		 'bought' => $ticket_id,
-		 'success' => true,
-		
+		 'success' => true,		 	
 		);
 	}
 	else{
-		return array( 
-		 'bought' => -1,
+		return array( 		
 		 'success' => false,
-		
+		 'error' => $error_message,
+		 'code' => $bought,
 		);
 	}	
 	
 }
 
+/* cancel specific number in progress for user */
+function cancel_purchase( WP_REST_Request $request ) 
+{
+	global $wpdb;
+	
+	$user_id = get_current_user_id();			
+	$ticket_id = $request->get_param( 'ticket_id');	
+	
+	//TODO - TRANSACTIONS
+	
+	$cancelled = update_db_cancel_purchase($user_id, $ticket_id);
+		
+	if( $cancelled )
+	{
+		return array( 
+		 'success' => true,
+		);
+	}
+	else{
+		return array( 
+		 'success' => false,
+		);
+	}
+}
+
+/* try and catch any errors in flow by processing completion of any tickets for user */
+function update_purchases( WP_REST_Request $request ) 
+{
+	global $wpdb;
+	
+	$user_id = get_current_user_id();			
+
+	$cancelled = true;
+	
+	//TODO - TRANSACTIONS
+	
+	//for each locked ticket with user id
+		//just put back to unused	
+		/*
+	$wpdb->query( 
+		"
+		UPDATE wp_lotto_numbers 
+		SET state = 'UNUSED', state_change_time = NULL, user_id = NULL		
+		WHERE state = 'LOCKED'
+			AND user_id = $user_id
+		"
+	);
+	*/
+	
+	
+	//for each in buying state ticket with user id
+		//check if purchase complete
+		//otherwise set cancelled
+	/*
+	
+	$updated1 = $wpdb->update( 
+					'wp_lotto_numbers', 
+					array( 
+						'state' => 'UNUSED',   
+						'state_change_time' => NULL,
+						'user_id' => NULL,
+					), 
+					array( 
+						'ID' => $ticket_id,
+						'user_id' => $user_id,						
+						'state' => 'BUYING',		
+					)
+				);
+				
+	$updated2 = $wpdb->update( 
+		'wp_lotto_stripe_purchases',
+		array(
+			'state' => 'CANCELLED',
+		),
+		array(
+			'number_id' => $ticket_id,
+			'user_id' => $user_id,
+		)
+	);	
+	
+		//get all numbers locked state
+		//revert those to UNUSED
+		
+		//get all numbers in buying state
+		//cross reference with purchases
+		//if session_id exists and paid then complete
+		//else mark in purchase as cancelled
+		//or buying state
+		
+		
+			
+			
+	$cancelled = $updated1 and $updated2;
+	
+	$wpdb->query( 
+		"
+		UPDATE wp_lotto_numbers 
+		SET state = 'UNUSED', state_change_time = NULL, user_id = NULL		
+		WHERE (state = 'LOCKED' OR state = 'BUYING')
+		AND user_id = $user_id
+		"
+	);		
+		
+		*/
+	//if( $cancelled )
+	//{
+		return array( 
+		 'success' => true,
+		);
+	//}
+	//else{
+	//	return array( 
+	//	 'success' => false,
+	//	);
+//}
+}
+
+
+
 /* cancel any numbers in progress for user */
+/*
 function cancel_purchase( WP_REST_Request $request ) 
 {
 	global $wpdb;
 	
 	$user_id = get_current_user_id();
+			
+	$ticket_id = $request->get_param( 'ticket_id');	
+	
+		//get all numbers locked state
+		//revert those to UNUSED
+		
+		//get all numbers in buying state
+		//cross reference with purchases
+		//if session_id exists and paid then complete
+		//else mark in purchase as cancelled
+		//or buying state
+		
+		
+			
 			
 	$cancelled = $wpdb->query( 
 		"
@@ -303,6 +496,7 @@ function cancel_purchase( WP_REST_Request $request )
 		);
 	}
 }
+*/
 
 
 ////////////////////////////////////////////////////////////////////
@@ -364,5 +558,14 @@ add_action( 'rest_api_init', function () {
 			'permission_callback' => 'lionslotto_is_member',
 		)
 	);
+	
+	register_rest_route( 'lionslotto/v1', '/update_purchases', 
+		array(
+			'methods' => 'POST',
+			'callback' => 'update_purchases',
+			'permission_callback' => 'lionslotto_is_member',
+		)
+	);
+	
 } 
 );

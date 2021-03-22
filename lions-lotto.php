@@ -142,6 +142,7 @@ function lionslotto_cron_exec()
 
 //unlock all numbers in locked and purchasing state if timeout
 
+//TODO actually want to test if numbers are complete
 
 function reset_lapsed_locked_numbers()
 {

@@ -7,6 +7,7 @@ add_shortcode( 'lionslotto-purchase', 'lionslotto_purchase_form' );
 add_shortcode( 'lionslotto-success', 'lionslotto_handle_success');
 add_shortcode( 'lionslotto-cancel', 'lionslotto_handle_cancel');
 
+
 //queries database for all unused numbers
 function get_available_numbers()
 {
@@ -143,7 +144,7 @@ function lionslotto_handle_success(){
 						document.getElementById("message").innerHTML = "purchase complete!";
 					}
 					else{
-						document.getElementById("message").innerHTML = "something went wrong!";
+						document.getElementById("message").innerHTML = "something went wrong! : " + result.error + " " + result.code;
 					}
 				
 				})
@@ -162,21 +163,67 @@ function lionslotto_handle_cancel()
 {	
 	$rest_url = get_site_url()."/wp-json/"."lionslotto/v1"; 	
 	$wp_nonce = wp_create_nonce( 'wp_rest' );
+	$ticket_id = $_GET['ticket_id'];
 	?>		
-		
+			<p id="ll_cancel"></p>
 			<script type="application/javascript" >
 	<?php
 			echo "var rest_url = \"$rest_url\";";
-			echo "var nonce = \"$wp_nonce\";";			
+			echo "var nonce = \"$wp_nonce\";";	
+			echo "var cancel_data = { ticket_id:\"$ticket_id\"};";			
 	?>
 				 fetch(
 					rest_url + "/cancel_purchase",				
 					{
 						method: 'POST',					
-						headers: {						
+						headers: {
+							'Content-Type': 'application/json',							
 							'X-WP-Nonce': nonce,					
 						},
-						 	 
+						body: JSON.stringify(cancel_data) 						 	
+					}
+				)
+				.then( function(response) {	
+					document.getElementById("ll_cancel").innerHTML = "got here " + response.status;
+					return response.json();
+				})
+				.then(function(result) {
+	
+					if( result.success ){
+						document.getElementById("ll_cancel").innerHTML = "cancel complete!";
+					}
+					else{
+						document.getElementById("ll_cancel").innerHTML = "something went wrong!";
+					}
+				
+				})
+				.catch( function(error) {
+					document.getElementById("ll_cancel").innerHTML = "Hmm something went wrong";					
+				});
+			</script>
+	<?php		
+}
+
+function lionslotto_handle_update()
+{	
+	$rest_url = get_site_url()."/wp-json/"."lionslotto/v1"; 	
+	$wp_nonce = wp_create_nonce( 'wp_rest' );	
+	?>		
+		
+			<script type="application/javascript" >
+	<?php
+			echo "var rest_url = \"$rest_url\";";
+			echo "var nonce = \"$wp_nonce\";";	
+					
+	?>
+				 fetch(
+					rest_url + "/update_purchases",				
+					{
+						method: 'POST',					
+						headers: {
+							'Content-Type': 'application/json',							
+							'X-WP-Nonce': nonce,					
+						}						 						
 					}
 				)
 				.then( function(response) {	
@@ -199,8 +246,6 @@ function lionslotto_handle_cancel()
 			</script>
 	<?php		
 }
-
-
 
 function lionslotto_display_logged_in_user_info()
 {
@@ -232,6 +277,7 @@ function lionslotto_display_logged_in_user_info()
 	<button class="lotto-button" onclick="get_ticket()">Buy Ticket</button><p id="gt_error"></p>
 	
 	<?php
+	lionslotto_handle_update();
 }
 
 function lionslotto_display_user_ticket_info()
