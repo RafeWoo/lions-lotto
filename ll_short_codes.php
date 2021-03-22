@@ -143,12 +143,12 @@ function lionslotto_handle_success(){
 						document.getElementById("message").innerHTML = "purchase complete!";
 					}
 					else{
-						document.getElementById("message").innerHTML = "something went wrong! " + result.session_id;
+						document.getElementById("message").innerHTML = "something went wrong!";
 					}
 				
 				})
 				.catch( function(error) {
-					//document.getElementById("message").innerHTML = "Hmm something went wrong";
+					document.getElementById("message").innerHTML = "Hmm something went wrong";
 					// console.error('Error:', error);
 				});
 			</script>

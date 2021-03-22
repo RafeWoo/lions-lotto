@@ -108,12 +108,13 @@ function create_checkout_session( WP_REST_Request $request ) {
 		//calculate a verification token for the purchase
 		//$token = random_int(0, PHP_INT_MAX);
 		
+		$purchase_start_time = time();
 		
 		$is_buying = $wpdb->update( 
 			'wp_lotto_numbers', 
 			array( 
 				'state' => 'BUYING',   
-				'state_change_time' => time(),				
+				'state_change_time' => $purchase_start_time,				
 			), 
 			array( 
 				'ID' => $ticket_id,
@@ -148,22 +149,28 @@ function create_checkout_session( WP_REST_Request $request ) {
 			'cancel_url' => "$site_url/lotto-purchase-cancel/?ticket_id=$ticket_id",	
 			]);
 
-/*
-TODO create an entry in the purchase table
-			$wpdb->update( 
-				'wp_sdfsafsaflionslotto_numbers',
-				array('session_id' => $session->id,
-				),
-				array( 
-					'display_value' => $ticket_id,
+
+			$inserted = $wpdb->insert('wp_lotto_stripe_purchases', 
+				array(
+					'number_id' => $ticket_id,
 					'user_id' => $user_id,
-					'state' => 'BUYING',			
+					'purchase_time' => $purchase_start_time,
+					'session_id' => $session->id,					
 				)
 			);
-*/
-			$result = array(
-				'id' => $session->id,
-			); 
+
+			if( $inserted )
+			{
+				$result = array(
+					'id' => $session->id,
+				);
+			}
+			else{
+				$result = array(
+					'error' => 'database error',
+				);
+			}
+			 
 		}
 		else{
 			$result = array(
@@ -199,58 +206,55 @@ function complete_purchase( WP_REST_Request $request )
 	$blah = "yay";
 	
 	try {
-		/*
-		$stripe = new \Stripe\StripeClient( 
-			array(
-				'api_key' => $stripe_key
-				)
-			);
-			*/
-
+	
 		\Stripe\Stripe::setApiKey($stripe_key); 		
 		
-		//$session = $stripe->checkout->sessions->retrieve( $session_id, array('api_key' => $stripe_key), array('api_key' => $stripe_key) );
+			
+		$session = \Stripe\Checkout\Session::retrieve( $session_id ); 
 		
-		$session = \Stripe\Checkout\Session::retrieve( $session_id ); //,null, array('api_key' => $stripe_key) );
-	}
+		if( isset($session) )
+		{
+			if( $session->payment_status == "paid")
+			{
+				$purchase_complete_time = time();
+				
+				//TODO - TRANSACTION
+				$updated1 = $wpdb->update( 
+					'wp_lotto_numbers', 
+					array( 
+						'state' => 'BOUGHT',   
+						'state_change_time' => $purchase_complete_time, 													
+					), 
+					array( 
+						'ID' => $ticket_id,
+						'user_id' => $user_id,						
+						'state' => 'BUYING',		
+					)
+				);	
+				
+				if( $updated1 )
+				{
+					$bought = $wpdb->update( 
+						'wp_lotto_stripe_purchases',
+						array( 
+							'state' => 'COMPLETE',
+							'purchase_time' => $purchase_complete_time,						
+						),
+						array(
+							'number_id' => $ticket_id,
+							'user_id' => $user_id,
+							'session_id' => $session_id,
+							'state' => 'STARTED',
+						)
+					);					
+				}						
+			}
+		}
+	}	
 	catch (Exception $e) {
 		//echo 'Caught exception: ',  $e->getMessage(), "\n";
 		$blah = $e->getMessage();
 	}
-	//\Stripe\Stripe::setApiKey($stripe_key); 
-	
-	//$session = \Stripe\Service\Checkout\SessionService::retrieve($session_id);
-	//$session = \Stripe\Checkout\Session::retrieve(
-//		$session_id,
-		//[]
-	//);
-	/*
-	
-	
-	if( isset($session) )
-	{
-		if( $session->payment_status == "paid")
-		{
-		
-		$bought = $wpdb->update( 
-			'wp_lotto_numbers', 
-			array( 
-				'state' => 'BOUGHT',   
-				'state_change_time' => time(), 	
-				'token' => NULL,
-				'session_id' => "hello",
-			), 
-			array( 
-				'display_value' => $ticket_id,
-				'user_id' => $user_id,
-				'token' => $token,
-				'state' => 'BUYING',		
-			)
-		);	
-		}
-	}
-	
-	*/
 	
 	
 	if( $bought )
@@ -258,14 +262,14 @@ function complete_purchase( WP_REST_Request $request )
 		return array( 
 		 'bought' => $ticket_id,
 		 'success' => true,
-		 'session_id' => "blah",
+		
 		);
 	}
 	else{
 		return array( 
 		 'bought' => -1,
 		 'success' => false,
-		 'session_id' => $blah,
+		
 		);
 	}	
 	
