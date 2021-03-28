@@ -6,6 +6,7 @@ var checkoutUrl = rest_url + "/create-checkout-session";
 	  	  
 checkoutButton.addEventListener('click', function() {
 	
+	
   // Create a new Checkout Session using the server-side endpoint  
   fetch(
 		checkoutUrl, 
@@ -21,8 +22,16 @@ checkoutButton.addEventListener('click', function() {
 	.then( function(response) {	
 		return response.json();
 	})
-	.then(function(session) {	
-		return stripe.redirectToCheckout({ sessionId: session.id });
+	.then(function(session) {
+			if( session.success )
+			{				
+				return stripe.redirectToCheckout({ sessionId: session.id });
+			}
+			else
+			{
+				alert(session.error);
+				return session;
+			}
 	})
 	.then(function(result) {
 			

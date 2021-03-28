@@ -75,8 +75,7 @@ require_once "ll_settings.php";
 require_once "ll_rest.php";
 require_once "ll_short_codes.php";
 require_once "ll_database.php";
-
-
+require_once "ll_admin.php";
 
 
 //////////////////////////////////////////////////////////////////////
@@ -106,6 +105,8 @@ function lionslotto_init_roles()
 		array(
 			'read'         => true,  // true allows this capability
 			'edit_lotto'   => true,
+			'read_private_posts' => true,
+			'read_private_pages' => true,
 		)
 	);
 }
@@ -142,8 +143,6 @@ function lionslotto_cron_exec()
 
 //unlock all numbers in locked and purchasing state if timeout
 
-//TODO actually want to test if numbers are complete
-
 function reset_lapsed_locked_numbers()
 {
 	global $wpdb;
@@ -151,14 +150,58 @@ function reset_lapsed_locked_numbers()
 	$time_now = time();	
 	$seconds_allowed = 900; //15 minutes to lock and purchase
 	
+	
+	
+	
 	$wpdb->query( 
 		"
 		UPDATE wp_lotto_numbers 
 		SET state = 'UNUSED', state_change_time = NULL, user_id = NULL		
-		WHERE (state = 'LOCKED' OR state = 'BUYING')
+		WHERE (state = 'LOCKED' )
 		AND ($time_now - state_change_time) > $seconds_allowed		
 		"
 	);	
+	
+	//OR state = 'BUYING' //see if any started transactions have completed
+	
+	
+	$live_purchases = $wpdb->get_results(
+						"
+						SELECT ID,user_id
+						FROM wp_lotto_stripe_purchases				
+						WHERE state='STARTED'
+						AND ($time_now - purchase_time) > $seconds_allowed
+						");
+						
+	
+	if( $live_purchases )
+	{
+		//$message = "got some live purchases count=".count($live_purchases);
+		
+		foreach( $live_purchases as $purchase)
+		{
+			$purchase_id = $purchase->ID;
+			$user_id = $purchase->user_id;
+			//$message = $message." , $purchase_id"; //.json_encode($purchase_id).json_encode(gettype($purchase_id));
+		
+			try
+			{
+				
+				if( !update_db_complete_purchase($user_id, $purchase_id) )
+				{
+					update_db_cancel_purchase($user_id, $purchase_id);
+					//$message = $message." cancelled";
+				}
+									
+			}
+			catch(Exception $e)
+			{
+				//$message = $message."error";
+			}
+			
+		}
+	}
+	
 }
 
 

@@ -6,6 +6,8 @@ add_shortcode( 'lionslotto-user-display', 'lionslotto_display_user_info');
 add_shortcode( 'lionslotto-purchase', 'lionslotto_purchase_form' );
 add_shortcode( 'lionslotto-success', 'lionslotto_handle_success');
 add_shortcode( 'lionslotto-cancel', 'lionslotto_handle_cancel');
+add_shortcode( 'lionslotto-user-update', 'lionslotto_user_update');
+
 
 
 //queries database for all unused numbers
@@ -107,27 +109,27 @@ function lionslotto_purchase_form() {
 function lionslotto_handle_success(){
 	
 	$user_id = get_current_user_id();
-	$ticket_id = $_GET['ticket_id'];
+	$purchase_id = $_GET['purchase_id'];
 	
 	
 	$rest_url = get_site_url()."/wp-json/"."lionslotto/v1"; 
 	$wp_nonce = wp_create_nonce( 'wp_rest' );
-	if( isset($ticket_id) )
+	if( isset($purchase_id) )
 	{
 		
 	?>			
-			<p id="message" />
+			<p id="ll_complete" ></p>
 			<script type="application/javascript" >			
 	<?php
 			echo "var rest_url = \"$rest_url\";";
 			echo "var nonce = \"$wp_nonce\";";
-			echo "var purchase_data = { ticket_id:\"$ticket_id\"};";
+			echo "var purchase_data = { purchase_id:\"$purchase_id\"};";
 	?>
+				
 				 fetch(
 					rest_url + "/complete_purchase", 
 					{
-						method: 'POST',	
-				
+						method: 'POST',					
 						headers: {
 							'Content-Type': 'application/json',
 							'X-WP-Nonce': nonce,							
@@ -135,21 +137,22 @@ function lionslotto_handle_success(){
 						body: JSON.stringify(purchase_data) 	  
 					}
 				)
-				.then( function(response) {						
+				.then( function(response) {	
+									
 					return response.json();
 				})
 				.then(function(result) {
 	
 					if( result.success ){
-						document.getElementById("message").innerHTML = "purchase complete!";
+						document.getElementById("ll_complete").innerHTML = "purchase complete!";
 					}
 					else{
-						document.getElementById("message").innerHTML = "something went wrong! : " + result.error + " " + result.code;
+						document.getElementById("ll_complete").innerHTML = "something went wrong! : " + result.error + " " + result.code;
 					}
 				
 				})
 				.catch( function(error) {
-					document.getElementById("message").innerHTML = "Hmm something went wrong";
+					document.getElementById("ll_complete").innerHTML = "Hmm something went wrong";
 					// console.error('Error:', error);
 				});
 			</script>
@@ -163,14 +166,14 @@ function lionslotto_handle_cancel()
 {	
 	$rest_url = get_site_url()."/wp-json/"."lionslotto/v1"; 	
 	$wp_nonce = wp_create_nonce( 'wp_rest' );
-	$ticket_id = $_GET['ticket_id'];
+	$purchase_id = $_GET['purchase_id'];
 	?>		
 			<p id="ll_cancel"></p>
 			<script type="application/javascript" >
 	<?php
 			echo "var rest_url = \"$rest_url\";";
 			echo "var nonce = \"$wp_nonce\";";	
-			echo "var cancel_data = { ticket_id:\"$ticket_id\"};";			
+			echo "var cancel_data = { purchase_id:\"$purchase_id\"};";			
 	?>
 				 fetch(
 					rest_url + "/cancel_purchase",				
@@ -184,7 +187,7 @@ function lionslotto_handle_cancel()
 					}
 				)
 				.then( function(response) {	
-					document.getElementById("ll_cancel").innerHTML = "got here " + response.status;
+					//document.getElementById("ll_cancel").innerHTML = "got here " + response.status;
 					return response.json();
 				})
 				.then(function(result) {
@@ -309,6 +312,53 @@ function lionslotto_display_user_info()
 	}
 }
 
+//This function requests an update to users in-progress purchases
+//It should be called on main lotto landing page
+//It allows for update to take place if user has come out of flow in an unusual way
+function lionslotto_user_update()
+{
+	$rest_url = get_site_url()."/wp-json/"."lionslotto/v1"; 	
+	$wp_nonce = wp_create_nonce( 'wp_rest' );
+	
+	?>		
+			<p id="ll_update"></p>
+			<script type="application/javascript" >
+	<?php
+			echo "var rest_url = \"$rest_url\";";
+			echo "var nonce = \"$wp_nonce\";";	
+				
+	?>
+				 fetch(
+					rest_url + "/update_user_purchases",				
+					{
+						method: 'POST',					
+						headers: {
+							'Content-Type': 'application/json',							
+							'X-WP-Nonce': nonce,					
+						},
+					}
+				)
+				.then( function(response) {	
+					//document.getElementById("ll_update").innerHTML = "got here " + response.status;
+					return response.json();
+				})
+				.then(function(result) {
+	
+					if( result.success ){
+						//document.getElementById("ll_update").innerHTML = result.message;
+					}
+					else{
+						document.getElementById("ll_update").innerHTML = "something went wrong!";
+					}
+				
+				})
+				.catch( function(error) {
+					document.getElementById("ll_update").innerHTML = "Hmm something went wrong";					
+				});
+			</script>
+	<?php
+	
+}
 
 
 

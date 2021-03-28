@@ -86,7 +86,7 @@ function lionslotto_create_stripe_purchases_table()
 		    user_id bigint(20) unsigned NOT NULL,
 			purchase_time bigint unsigned NOT NULL,						
 			session_id VARCHAR(128),
-			state ENUM('STARTED','COMPLETE','CANCELLED') DEFAULT 'STARTED' NOT NULL,
+			state ENUM('STARTED','COMPLETE','CANCELLED','UNASSIGNED') DEFAULT 'STARTED' NOT NULL,
 			FOREIGN KEY (number_id) REFERENCES wp_lotto_numbers(ID),
 			FOREIGN KEY (user_id) REFERENCES wp_users(ID)
 		)$charset_collate;
