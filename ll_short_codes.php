@@ -89,7 +89,7 @@ function lionslotto_purchase_form() {
 		echo "<script src=\"https://js.stripe.com/v3/\"></script>";  //load the stripe api		
 		echo "<p>You are buying an entry into the Southam Lions 500 Club</p>";
 		echo "<p>Click on the button to continue to the Stripe payments page</p>";
-		echo "<button type=\"button\" id=\"checkout-button\">Checkout</button>";		
+		echo "<p><button type=\"button\" id=\"checkout-button\">Checkout</button></p>";		
 		echo "<script type=\"application/javascript\" >";
 		echo "var rest_url = \"$rest_url\";";
 		echo "var nonce = \"$wp_nonce\";";
@@ -276,8 +276,8 @@ function lionslotto_display_logged_in_user_info()
 		echo "\n";
 	?>
 	</script>
-	
-	<button class="lotto-button" onclick="get_ticket()">Buy Ticket</button><p id="gt_error"></p>
+	<p><button class="lotto-button" onclick="get_ticket()">Buy Ticket</button><p>
+	<p id="gt_error"></p>
 	
 	<?php
 	lionslotto_handle_update();

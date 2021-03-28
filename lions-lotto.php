@@ -109,6 +109,10 @@ function lionslotto_init_roles()
 			'read_private_pages' => true,
 		)
 	);
+	
+	// add $cap capability to this role object
+	$admin_role = get_role( 'administrator' );	
+	$admin_role->add_cap( 'edit_lotto' );
 }
 
 
