@@ -3,6 +3,17 @@
 // Attempt to lock a number before purchasing 
 // This prevents anyone else from buying the same number at the same time
 
+function get_next_available_ticket()
+{
+	global $wpdb;
+	$row = $wpdb->get_row("SELECT * FROM wp_lotto_numbers WHERE state = 'UNUSED'");
+	
+	if( isset($row) )
+	{
+		return $row->ID;
+	}
+}
+
 function get_next_number( WP_REST_Request $request )
 {
 	global $wpdb;
@@ -13,10 +24,10 @@ function get_next_number( WP_REST_Request $request )
     $user_id = get_current_user_id();
   
   
-	$row = $wpdb->get_row("SELECT * FROM wp_lotto_numbers WHERE state = 'UNUSED'");
 	
+	$ticket_id = get_next_available_ticket();
 	
-	if( isset($row) )
+	if( isset($ticket_id) )
 	{
 		$success = $wpdb->update( 
 			'wp_lotto_numbers', 
@@ -26,7 +37,7 @@ function get_next_number( WP_REST_Request $request )
 				'user_id' => $user_id,
 			), 
 			array( 
-				'ID' => $row->ID,
+				'ID' => $ticket_id,
 				'state' => 'UNUSED'
 			)
 		);
@@ -607,6 +618,122 @@ function cancel_purchase( WP_REST_Request $request )
 }
 */
 
+function assign_ticket(WP_REST_Request $request)
+{
+	global $wpdb;
+	
+	$name = sanitize_text_field( $request->get_param( 'name'));
+	$email = sanitize_email($request->get_param( 'email' ));
+	$address1 = sanitize_text_field( $request->get_param( 'address1'));
+	$address2 = sanitize_text_field( $request->get_param( 'address2'));
+	$address3 = sanitize_text_field( $request->get_param( 'address3'));
+	$postcode = sanitize_text_field( $request->get_param( 'postcode'));
+	$phone = sanitize_text_field( $request->get_param( 'phone'));
+	
+	$valid_input = true;	
+	$error_message = "Unknown Error";
+	
+	if( empty($name) or (empty($email) and empty($address1) and empty($phone) ) )
+	{
+		$valid_input = false;
+		$error_message = "bad inputs";
+	}
+	
+	
+	if( $valid_input )
+	{
+	
+		//get next available number 
+		$ticket_id = get_next_available_ticket();
+		
+		//if number exists
+		if( isset($ticket_id))
+		{
+			$purchase_complete_time = time();
+			$admin_id = get_current_user_id();
+			
+			$updated1 = true;
+			$updated2 = false;
+	
+			//mark as bought
+			$updated1 = $wpdb->update( 
+				'wp_lotto_numbers', 
+				array( 
+					'state' => 'BOUGHT_MANUALLY',   
+					'state_change_time' => $purchase_complete_time, 													
+					'user_id' => $admin_id,
+				), 
+				array( 
+					'ID' => $ticket_id,										
+					'state' => 'UNUSED',		
+				)
+			);
+		
+			//update the manual purchase array
+			if( $updated1 )
+			{
+				try{
+										
+					$updated2 = $wpdb->insert('wp_lotto_manual_purchases',
+						array(
+						'number_id' => $ticket_id,
+						'admin_id' => $admin_id,
+						'purchase_time' => $purchase_complete_time,
+						'user_name' => $name,
+						'user_phone' => $phone,
+						'user_email' => $email,
+						'user_address_1' => $address1,
+						'user_address_2' => $address2,
+						'user_address_3' => $address3,
+						'user_postcode' => $postcode,						
+						)										
+					);
+					
+				
+					if( $updated2 )
+					{
+						//ticket assigned
+						$ticket_assigned = $ticket_id;
+					}
+					else{
+						$error_message = "Failed to insert user details";
+					}
+				}
+				catch(Exception $e)
+				{
+					$error_message = $e.getMessage();					
+				}
+										
+			}
+			else{
+				$error_message = "Failed to update number table";
+			}
+				
+		}
+		else
+		{
+			$error_message = "No tickets left";
+		}
+		
+	}
+	
+	if( isset($ticket_assigned) )
+	{
+
+		return array( 
+			'success' => true,
+			'ticket' => $ticket_assigned
+		);
+	}
+	else
+	{
+		return array( 
+		 'success' => false,
+		 'error' => $error_message
+		);
+	}
+}
+
 
 ////////////////////////////////////////////////////////////////////
 //permission callbacks
@@ -619,6 +746,18 @@ function lionslotto_is_member() {
     // This is a black-listing approach. You could alternatively do this via white-listing, by returning false here and changing the permissions check.
     return true;
 }
+
+
+function lionslotto_is_lottoadmin() {
+    // Restrict endpoint to only users who have the edit_posts capability.
+    if ( ! current_user_can( 'edit_lotto' ) ) {
+        return new WP_Error( 'rest_forbidden', esc_html__( 'OMG you can not view private data.', 'my-text-domain' ), array( 'status' => 401 ) );
+    }
+ 
+    // This is a black-listing approach. You could alternatively do this via white-listing, by returning false here and changing the permissions check.
+    return true;
+}
+
 
 ////////////////////////////////////////////////////////////////////
 //register server api
@@ -673,6 +812,15 @@ add_action( 'rest_api_init', function () {
 			'methods' => 'POST',
 			'callback' => 'update_user_purchases',
 			'permission_callback' => 'lionslotto_is_member',
+		)
+	);
+	
+	
+	register_rest_route( 'lionslotto/v1', '/assign-ticket', 
+		array(
+			'methods' => 'POST',
+			'callback' => 'assign_ticket',
+			'permission_callback' => 'lionslotto_is_lottoadmin',
 		)
 	);
 	

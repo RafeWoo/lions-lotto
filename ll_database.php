@@ -28,7 +28,7 @@ function lionslotto_create_numbers_table()
 			CREATE TABLE $table_name (
 				ID bigint(20) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
 				display_value smallint(3) unsigned NOT NULL,				
-				state ENUM('UNUSED','LOCKED','BUYING','BOUGHT') DEFAULT 'UNUSED' NOT NULL,
+				state ENUM('UNUSED','LOCKED','BUYING','BOUGHT','BOUGHT_MANUALLY') DEFAULT 'UNUSED' NOT NULL,
 				state_change_time bigint unsigned,
 				user_id bigint(20) unsigned,
 				FOREIGN KEY (user_id) REFERENCES wp_users(ID)				
