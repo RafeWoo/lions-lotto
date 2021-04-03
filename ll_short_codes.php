@@ -18,7 +18,7 @@ function get_available_numbers()
 	$results = $wpdb->get_results(
 		"        
 		SELECT ID, display_value 
-        FROM wp_lionslotto_numbers
+        FROM wp_lotto_numbers
         WHERE state = 'UNUSED'       
 		"
 	);
@@ -252,6 +252,8 @@ function lionslotto_handle_update()
 
 function lionslotto_display_logged_in_user_info()
 {
+	
+	
 	/*
 	<p><a href=<?php echo $buy_url ?> class="lotto-button">Buy A Ticket</a></p>
 	// can we load java script file in better way? - wp add inline_script
@@ -276,6 +278,7 @@ function lionslotto_display_logged_in_user_info()
 		echo "\n";
 	?>
 	</script>
+	<h4>Purchase Tickets</h4>
 	<p><button class="lotto-button" onclick="get_ticket()">Buy Ticket</button><p>
 	<p id="gt_error"></p>
 	
@@ -285,8 +288,44 @@ function lionslotto_display_logged_in_user_info()
 
 function lionslotto_display_user_ticket_info()
 {
+	global $wpdb;
+	
+	$user_id = get_current_user_id();
+	
+	$results = $wpdb->get_results(
+		"        
+		SELECT *
+        FROM wp_lotto_numbers
+        WHERE user_id=$user_id
+		AND state='BOUGHT'
+		"
+	);
+	
+	//AND user_id = $user_id
+	date_default_timezone_set('UTC');
+	
 	?>
-	<p>TODO show users tickets</p>
+	<h4>My Tickets</h4>
+	<table style="width:100%">
+	<tr>
+    <th>Number</th>
+    <th>Bought</th>
+    <th>Winner</th>
+	</tr>		
+	<?php
+	foreach( $results as $result )
+	{
+		$date = date('d M Y', $result->state_change_time );
+		echo "<tr>";
+		echo "<td>$result->display_value</td>";
+		echo "<td>$date</td>";
+		echo "<td></td>";
+		echo "</tr>";
+	}
+	
+	?>
+	</table>
+	</p>
 	<?php
 }
 function lionslotto_display_logged_out_user_info()

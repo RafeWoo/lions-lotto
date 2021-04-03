@@ -20,14 +20,47 @@ function lionslotto_display_admin_info()
 function lionslotto_display_logged_in_admin_info()
 {
 	?>
+	<script type="application/javascript">
+		function uploadResult() {
+			//validate no repeats
+			//confirm pop up
+			
+			//display upload result in upload_result_info element
+			let output_element = document.getElementById("upload_result_info");
+			output_element.innerHTML = "hello";
+			return false;
+		}
+	</script>
 	<h2>admin logged in display</h2>
-	<h4>TODO generate result button</h4>
+	<h4>Generate result button</h4>
 	<p>
 	Not as much fun as drawing manually but easier.
-	<button disabled="true">Generate a result</button>
+	<button id="gen-result-button" disabled="true">Generate a result</button>
 	<p>
-	<h4>TODO upload a result form</h4>
-	<p>Result consists of Month, 1st Winning number , 2nd Winning number, 3rd Winning Number</p>	
+	<h4>Upload a result</h4>
+	<p>Set winning numbers for the month and click submit</p>
+	<form name="lf-set-result-form" class="lf-set-result-form" onsubmit="return uploadResult();">
+		<label for="set-result-month">Month: </label>
+		<select id="set-result-month" name="set-result-month">
+			<option value="JANUARY">Jan</option>
+			<option value="FEBRUARY">Feb</option>
+			<option value="MARCH">Mar</option>
+			<option value="APRIL">Apr</option>
+			<option value="MAY">May</option>
+			<option value="JUNE">Jun</option>
+			<option value="JULY">Jul</option>
+			<option value="AUGUST">Aug</option>
+			<option value="SEPTEMBER">Sep</option>
+			<option value="OCTOBER">Oct</option>
+			<option value="NOVEMBER">Nov</option>
+			<option value="DECEMBER">Dec</option>
+		</select><br>
+		<label for="set-result1">1st Prize: </label><input type="number" min="1" max="500" id="set-result1" name="set-result1" value="1" /><br>
+		<label for="set-result2">2nd Prize: </label><input type="number" min="1" max="500" id="set-result2" name="set-result2" value="1" /><br>			
+		<label for="set-result3">3rd Prize: </label><input type="number" min="1" max="500" id="set-result3" name="set-result3" value="1" /><br>
+		<input type="submit" id="set-result" name="set-result" /><br>
+	</form>
+	<p id="upload_result_info"></p>
 	<h4>TODO Broadcast result form</h4>
 	<p>Mail subscribers with this months result</p>
 	<p><button disabled="true">Broadcast results</button></p>
@@ -35,8 +68,7 @@ function lionslotto_display_logged_in_admin_info()
 	<p>Let winners know they have won</p>
 	<p><button disabled="true">Mail Winners</button></p>	
 	<h4><a href="lotto-view-tickets">View Tickets Data</a></h4>
-	<h4><a href="lotto-payments">Download Payments Data</a></h4>
-	<p>TODO What data do we want and in what format?</p>	
+	<h4><a href="lotto-payments">Download Payments Data</a></h4>	
 	<h4><a href="lotto-assign-number">Assign Ticket Manually</a></h4>
 	<h4><a href="../lotto-results">View Results</a></h4>
 	<?php
@@ -53,11 +85,69 @@ function lionslotto_display_logged_out_admin_info()
 
 function lionslotto_display_tickets()
 {
+	
+	
+	
 	if ( current_user_can('edit_lotto') ) { 
+	
+		global $wpdb;
+	
+		$user_id = get_current_user_id();
+	
+		$results = $wpdb->get_results(
+			"        
+			SELECT *
+			FROM wp_lotto_numbers       
+			WHERE (state='BOUGHT' OR state='BOUGHT_MANUALLY')
+			"
+		);
 	?>
-	<h2>TODO tickets info</h2>
-	<p> NUmber of tickets sold</p>
-	<p>Table of Ticket number - date sold- user name - manual assignment?</p>
+	<h2>Tickets Info</h2>	
+	<?php 
+	$tickets_sold = count($results);
+	echo "<p>$tickets_sold Tickets sold</p>";
+	?>
+	
+	<table style="width:100%">
+	<tr>
+    <th>Number</th>
+    <th>Bought</th>
+    <th>User</th>
+	<th>Assigned by</th>
+	</tr>
+	<?php
+	foreach( $results as $result)
+	{
+		echo "<tr>";
+		echo "<td>$result->display_value</td>";
+		$time_bought = date('d M Y', $result->state_change_time);
+		echo "<td>$time_bought</td>";
+		
+		if( $result->state == 'BOUGHT_MANUALLY' )
+		{
+			$user_name = $wpdb->get_var("
+				SELECT user_name
+				FROM wp_lotto_manual_purchases
+				WHERE number_id=$result->ID				
+				");
+			echo "<td>$user_name</td>";
+			
+			$admin_data = get_userdata( $result->user_id );
+			echo "<td>$admin_data->display_name</td>";
+
+		}
+		else
+		{
+			$user_info = get_userdata( $result->user_id );
+			echo "<td>$user_info->display_name</td>";
+			echo "<td></td>";
+		}
+		
+		echo "</tr>";
+	}
+	?>
+	</table>
+	</p>	
 	<?php
 	
 	}
