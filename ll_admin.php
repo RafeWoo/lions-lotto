@@ -19,29 +19,32 @@ function lionslotto_display_admin_info()
 
 function lionslotto_display_logged_in_admin_info()
 {
+	global $wpdb;
+	
+	$tickets_sold = $wpdb->get_var(
+			"        
+			SELECT COUNT(*)
+			FROM wp_lotto_numbers       
+			WHERE (state='BOUGHT' OR state='BOUGHT_MANUALLY')
+			"
+		);
+	
+	$wp_nonce = wp_create_nonce( 'wp_rest' );
+	$rest_url = get_site_url()."/wp-json/"."lionslotto/v1/set-result"; 	
 	?>
-	<script type="application/javascript">
-		function uploadResult() {
-			//validate no repeats
-			//confirm pop up
-			
-			//display upload result in upload_result_info element
-			let output_element = document.getElementById("upload_result_info");
-			output_element.innerHTML = "hello";
-			return false;
-		}
-	</script>
+
 	<h2>admin logged in display</h2>
+	<h4><?php echo "$tickets_sold";?> Tickets Sold</h4>
 	<h4>Generate result button</h4>
 	<p>
 	Not as much fun as drawing manually but easier.
-	<button id="gen-result-button" disabled="true">Generate a result</button>
+	<button id="gen-result-button" onclick="generateResult()">Generate a result</button>
 	<p>
 	<h4>Upload a result</h4>
 	<p>Set winning numbers for the month and click submit</p>
-	<form name="lf-set-result-form" class="lf-set-result-form" onsubmit="return uploadResult();">
-		<label for="set-result-month">Month: </label>
-		<select id="set-result-month" name="set-result-month">
+	<form name="lf-set-result-form" class="lf-set-result-form" onsubmit="return uploadResult();">		
+		<label for="result-month">Month: </label>
+		<select id="result-month" name="result-month">
 			<option value="JANUARY">Jan</option>
 			<option value="FEBRUARY">Feb</option>
 			<option value="MARCH">Mar</option>
@@ -55,9 +58,9 @@ function lionslotto_display_logged_in_admin_info()
 			<option value="NOVEMBER">Nov</option>
 			<option value="DECEMBER">Dec</option>
 		</select><br>
-		<label for="set-result1">1st Prize: </label><input type="number" min="1" max="500" id="set-result1" name="set-result1" value="1" /><br>
-		<label for="set-result2">2nd Prize: </label><input type="number" min="1" max="500" id="set-result2" name="set-result2" value="1" /><br>			
-		<label for="set-result3">3rd Prize: </label><input type="number" min="1" max="500" id="set-result3" name="set-result3" value="1" /><br>
+		<label for="result1">1st Prize: </label><input type="number" min="1" max="500" id="result1" name="result1" value="1" /><br>
+		<label for="result2">2nd Prize: </label><input type="number" min="1" max="500" id="result2" name="result2" value="1" /><br>			
+		<label for="result3">3rd Prize: </label><input type="number" min="1" max="500" id="result3" name="result3" value="1" /><br>
 		<input type="submit" id="set-result" name="set-result" /><br>
 	</form>
 	<p id="upload_result_info"></p>
@@ -71,6 +74,141 @@ function lionslotto_display_logged_in_admin_info()
 	<h4><a href="lotto-payments">Download Payments Data</a></h4>	
 	<h4><a href="lotto-assign-number">Assign Ticket Manually</a></h4>
 	<h4><a href="../lotto-results">View Results</a></h4>
+	<script type="application/javascript">
+	
+		/* Randomize array in-place using Durstenfeld shuffle algorithm */
+		function shuffleArray(array) {
+			for (var i = array.length - 1; i > 0; i--) {
+			var j = Math.floor(Math.random() * (i + 1));
+			var temp = array[i];
+			array[i] = array[j];
+			array[j] = temp;
+			}
+		}
+	
+		function generateResult()
+		{
+			let ticket_count = <?php echo $tickets_sold; ?>;
+
+			if( ticket_count > 2 )
+			{
+			
+			var d = new Date();
+			var month_n = d.getMonth();
+			
+			let formdata = document.forms["lf-set-result-form"];
+			var month_names = new Array();
+month_names[0] = "JANUARY";
+month_names[1] = "FEBRUARY";
+month_names[2] = "MARCH";
+month_names[3] = "APRIL";
+month_names[4] = "MAY";
+month_names[5] = "JUNE";
+month_names[6] = "JULY";
+month_names[7] = "AUGUST";
+month_names[8] = "SEPTEMBER";
+month_names[9] = "OCTOBER";
+month_names[10] = "NOVEMBER";
+month_names[11] = "DECEMBER";
+			formdata["result-month"].value = month_names[month_n];
+			
+			var ticket_array = [];
+			for( i = 0; i < ticket_count; ++i)
+			{
+				ticket_array[i] = i;
+			}
+			shuffleArray(ticket_array);
+			
+			formdata["result1"].value = ticket_array[0] + 1;
+			formdata["result2"].value = ticket_array[1] + 1;
+			formdata["result3"].value = ticket_array[2] + 1;
+			}
+			else{
+				alert("not enough tickets sold");
+			}
+			//let month_element = 
+			//let output_element = document.getElementById("upload_result_info");
+			//output_element.innerHTML = "gen clicked";
+		}
+		//document.getElementById("gen-result-button").addEventListener("click", generateResult);
+		
+		
+		function uploadResult() {
+			//validate no repeats
+			let is_form_valid = false;
+			
+			let output_element = document.getElementById("upload_result_info");
+			let formdata = document.forms["lf-set-result-form"];
+			
+			let month = formdata["result-month"].value;
+			let r1 = formdata["result1"].value;
+			let r2 = formdata["result2"].value;
+			let r3 = formdata["result3"].value;
+			if( r1 != "" &&
+			    r2 != "" &&
+				r3 != "" &&			
+				r1 != r2 &&
+			    r2 != r3 &&
+				r1 != r3
+				) 
+			{
+				is_form_valid = true;
+			}
+			
+			if( !is_form_valid )
+			{
+				output_element.innerHTML = "Form is not valid";
+			}
+			else
+			{
+							
+				//confirm pop up			
+				let message = "Winners for " + month + " are First: " + r1 + ", Second: " + r2 + ", Third: " + r3 + "\nIs that correct?";
+				
+				if( confirm(message) )
+				{
+					//send uploadResultRequest
+					//display upload result in upload_result_info element
+														
+					const url = <?php echo "\"$rest_url\""; ?>;					
+					const nonce = <?php	echo "\"$wp_nonce\""; ?>;
+										
+					fetch(	
+						url, 
+						{
+							method: 'POST',
+							body: new URLSearchParams(new FormData(formdata)), 
+							headers: {
+								'X-WP-Nonce': nonce			
+							},
+						}
+					).then(
+						(resp) => {
+							return resp.json(); // or resp.text() or whatever the server sends
+						}
+					).then(
+						(body) => {
+					
+							if( body.success )
+							{
+								output_element.innerHTML = "result successfully uploaded";
+							}
+							else{													
+								output_element.innerHTML = body.error;
+							}
+						}						
+					)				
+					.catch( (error) => {					
+						output_element.innerHTML = "unknown exception";
+									
+						}
+					);
+								
+				}
+			}
+			return false;
+		}
+	</script>
 	<?php
 }
 
@@ -78,6 +216,7 @@ function lionslotto_display_logged_out_admin_info()
 {
 	?>
 	<h2>user logged out display</h2>
+	<p><a href="../login">Log-in</a></p>
 	<?php
 }
 
@@ -85,9 +224,7 @@ function lionslotto_display_logged_out_admin_info()
 
 function lionslotto_display_tickets()
 {
-	
-	
-	
+		
 	if ( current_user_can('edit_lotto') ) { 
 	
 		global $wpdb;

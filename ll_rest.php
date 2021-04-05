@@ -735,6 +735,88 @@ function assign_ticket(WP_REST_Request $request)
 }
 
 
+function set_lotto_result(WP_REST_Request $request)
+{
+	global $wpdb;
+	
+	//get month
+	//r1,r2,r3
+	$result_month = $request->get_param( 'result-month');
+	$result_1 = $request->get_param( 'result1');
+	$result_2 = $request->get_param( 'result2');
+	$result_3 = $request->get_param( 'result3');
+
+	$error_message = "unknown_error";	
+	$result_valid = false;
+	
+	//must be for month not set yet
+	//the next expected month
+	//results all different
+	if( isset($result_1) &&
+	    isset($result_2) && 
+		isset($result_3) &&
+		$result_1 != $result_2 &&
+		$result_2 != $result_3 &&
+		$result_1 != $result_3 )
+	{
+		$table_name = 'wp_lotto_results';
+		$creation_time = time();
+		//insert results into database
+		$r1_inserted = $wpdb->insert($table_name,
+				array(
+					'number_id' => $result_1,
+					'creation_time' => $creation_time,
+					'month' => $result_month,
+					'prize' =>'FIRST',
+					'amount' => 10,
+				)
+		);
+		
+		$r2_inserted = $wpdb->insert($table_name,
+				array(
+					'number_id' => $result_2,
+					'creation_time' => $creation_time,
+					'month' => $result_month,
+					'prize' =>'SECOND',
+					'amount' => 20,
+				)
+		);
+		
+		$r3_inserted = $wpdb->insert($table_name,
+				array(
+					'number_id' => $result_3,
+					'creation_time' => $creation_time,
+					'month' => $result_month,
+					'prize' =>'THIRD',
+					'amount' => 30,
+				)
+		);
+		
+		if( $r1_inserted && $r2_inserted && $r3_inserted )
+		{
+			//commit
+			$result_valid = true;
+		}
+		else{
+			$error_message = "database error";
+		}
+	}
+	
+	if( $result_valid )
+	{
+		return array(
+			'success' => true
+		);		
+	}
+	else{
+		return array( 
+			'success' => false,
+			'error' => $error_message
+		);
+	}
+	
+}
+
 ////////////////////////////////////////////////////////////////////
 //permission callbacks
 function lionslotto_is_member() {
@@ -820,6 +902,14 @@ add_action( 'rest_api_init', function () {
 		array(
 			'methods' => 'POST',
 			'callback' => 'assign_ticket',
+			'permission_callback' => 'lionslotto_is_lottoadmin',
+		)
+	);
+	
+	register_rest_route( 'lionslotto/v1', '/set-result', 
+		array(
+			'methods' => 'POST',
+			'callback' => 'set_lotto_result',
 			'permission_callback' => 'lionslotto_is_lottoadmin',
 		)
 	);
