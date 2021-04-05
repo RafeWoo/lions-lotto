@@ -757,14 +757,15 @@ function set_lotto_result(WP_REST_Request $request)
 		WHERE month='$result_month'
 		");
 	
-	if( isset($results_for_month) && count($results_for_month) > 0)
+	if( isset($results_for_month) && count($results_for_month) > 0 ) //TODO add check for this year comparison
 	{
 		//$debug = var_export($results_for_month, true);
 		
 		$error_message = "Result is already set for ".$result_month;//." ".count($results_for_month)." ".$debug;
 	}
 	else{
-	//the next expected month
+	//TODO is it the next expected month?
+	
 	//results all different
 	if( isset($result_1) &&
 	    isset($result_2) && 

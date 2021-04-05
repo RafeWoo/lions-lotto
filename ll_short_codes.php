@@ -263,7 +263,7 @@ function lionslotto_display_logged_in_user_info()
 	$buy_url = get_site_url()."/lotto-purchase"; //redirecting here
 	
 	?>
-	<h2>user logged in display</h2>
+	
 	<?php lionslotto_display_user_ticket_info() ?>	
 	
 	
@@ -284,6 +284,46 @@ function lionslotto_display_logged_in_user_info()
 	
 	<?php
 	lionslotto_handle_update();
+}
+
+function calc_number_prize_string($ticket_id)
+{
+	global $wpdb;
+	
+	//select from results where 1st and 2nd and 3rd
+	$prize_string = "";
+	
+	$winning_results = $wpdb->get_results("
+			SELECT *
+			FROM wp_lotto_results
+			WHERE first_id=$ticket_id
+			OR second_id=$ticket_id
+			OR third_id=$ticket_id
+		");
+	
+	if( isset($winning_results))
+	{
+		foreach($winning_results as $result)
+		{
+			$month = $result->month;
+			$year = date("Y", $result->creation_time);
+			if( $result->first_id == $ticket_id)
+			{
+				$pos = "First";
+			}
+			else if( $result->second_id == $ticket_id )
+			{
+				$pos = "Second";
+			}
+			else{ //must be third prize
+				$pos = "Third";
+			}
+			
+			$prize_string = $prize_string."$month $year($pos), ";
+		}
+	}
+	
+	return $prize_string;
 }
 
 function lionslotto_display_user_ticket_info()
@@ -319,7 +359,8 @@ function lionslotto_display_user_ticket_info()
 		echo "<tr>";
 		echo "<td>$result->display_value</td>";
 		echo "<td>$date</td>";
-		echo "<td></td>";
+		$prize_string = calc_number_prize_string($result->ID);
+		echo "<td>$prize_string</td>";
 		echo "</tr>";
 	}
 	
