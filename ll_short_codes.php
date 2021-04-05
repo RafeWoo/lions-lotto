@@ -7,7 +7,7 @@ add_shortcode( 'lionslotto-purchase', 'lionslotto_purchase_form' );
 add_shortcode( 'lionslotto-success', 'lionslotto_handle_success');
 add_shortcode( 'lionslotto-cancel', 'lionslotto_handle_cancel');
 add_shortcode( 'lionslotto-user-update', 'lionslotto_user_update');
-
+add_shortcode( 'lionslotto-view-results', 'lionslotto_view_results');
 
 
 //queries database for all unused numbers
@@ -399,6 +399,52 @@ function lionslotto_user_update()
 	
 }
 
-
+function lionslotto_view_results()
+{
+	global $wpdb;
+	$results = $wpdb->get_results(
+		"
+		SELECT *
+		FROM wp_lotto_results
+		"
+	);
+	
+	if( !isset($results) || count($results)== 0)
+	{
+		?>		
+			<p>There are no results yet.</p>				
+		<?php
+	}
+	else
+	{		
+		?>		
+			
+			<table>
+		
+			<tr>
+			<th>Month</th>
+			<th>Year</th>
+			<th>First</th>
+			<th>Second</th>
+			<th>Third</th>
+			</tr>
+<?php
+		foreach($results as $result)
+		{
+			$year = date("Y", $result->creation_time);
+			echo "<tr>";
+			echo "<td>$result->month</td>";
+			echo "<td>$year</td>";
+			echo "<td>$result->first_id</td>";
+			echo "<td>$result->second_id</td>";
+			echo "<td>$result->third_id</td>";
+			echo "</tr>";
+		}
+?>
+			
+			</table>
+		<?php
+	}
+}
 
 

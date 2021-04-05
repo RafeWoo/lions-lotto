@@ -61,13 +61,15 @@ function lionslotto_create_results_table()
 	$wpdb->query(		
 		"	
 		CREATE TABLE IF NOT EXISTS $table_name (
-			ID bigint(20) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			number_id bigint(20) unsigned,			
+			ID bigint(20) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,				
 			creation_time bigint unsigned,
-			month ENUM('JANUARY','FEBRUARY','MARCH','APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER') DEFAULT 'JANUARY' NOT NULL,
-			prize ENUM('FIRST','SECOND','THIRD') DEFAULT 'FIRST' NOT NULL,
-			amount smallint unsigned,			
-			FOREIGN KEY (number_id) REFERENCES wp_lotto_numbers(ID)
+			month ENUM('JANUARY','FEBRUARY','MARCH','APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER') DEFAULT 'JANUARY' NOT NULL,			
+			first_id bigint(20) unsigned,
+			second_id bigint(20) unsigned,
+			third_id bigint(20) unsigned,				
+			FOREIGN KEY (first_id) REFERENCES wp_lotto_numbers(ID),
+			FOREIGN KEY (second_id) REFERENCES wp_lotto_numbers(ID),
+			FOREIGN KEY (third_id) REFERENCES wp_lotto_numbers(ID)
 		)$charset_collate;
 		"	
 	);	

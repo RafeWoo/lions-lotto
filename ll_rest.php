@@ -762,37 +762,20 @@ function set_lotto_result(WP_REST_Request $request)
 		$table_name = 'wp_lotto_results';
 		$creation_time = time();
 		//insert results into database
-		$r1_inserted = $wpdb->insert($table_name,
+		$result_inserted = $wpdb->insert($table_name,
 				array(
-					'number_id' => $result_1,
+					
 					'creation_time' => $creation_time,
 					'month' => $result_month,
-					'prize' =>'FIRST',
-					'amount' => 10,
+					'first_id' => $result_1,
+					'second_id' => $result_2,
+					'third_id' => $result_3,					
 				)
 		);
 		
-		$r2_inserted = $wpdb->insert($table_name,
-				array(
-					'number_id' => $result_2,
-					'creation_time' => $creation_time,
-					'month' => $result_month,
-					'prize' =>'SECOND',
-					'amount' => 20,
-				)
-		);
+	
 		
-		$r3_inserted = $wpdb->insert($table_name,
-				array(
-					'number_id' => $result_3,
-					'creation_time' => $creation_time,
-					'month' => $result_month,
-					'prize' =>'THIRD',
-					'amount' => 30,
-				)
-		);
-		
-		if( $r1_inserted && $r2_inserted && $r3_inserted )
+		if( $result_inserted )
 		{
 			//commit
 			$result_valid = true;
