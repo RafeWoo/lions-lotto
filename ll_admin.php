@@ -64,16 +64,19 @@ function lionslotto_display_logged_in_admin_info()
 		<input type="submit" id="set-result" name="set-result" /><br>
 	</form>
 	<p id="upload_result_info"></p>
+	
+	
+	<h4><a href="lotto-view-tickets">View Tickets Data</a></h4>
+	<h4><a href="lotto-payments">Download Payments Data</a></h4>	
+	<h4><a href="lotto-assign-number">Assign Ticket Manually</a></h4>
+	<h4><a href="../lotto-results">View Results</a></h4>
+	<h3>Mailing Stuff</h3>
 	<h4>TODO Broadcast result form</h4>
 	<p>Mail subscribers with this months result</p>
 	<p><button disabled="true">Broadcast results</button></p>
 	<h4>TODO Mail Winners form</h4>
 	<p>Let winners know they have won</p>
-	<p><button disabled="true">Mail Winners</button></p>	
-	<h4><a href="lotto-view-tickets">View Tickets Data</a></h4>
-	<h4><a href="lotto-payments">Download Payments Data</a></h4>	
-	<h4><a href="lotto-assign-number">Assign Ticket Manually</a></h4>
-	<h4><a href="../lotto-results">View Results</a></h4>
+	<p><button disabled="true">Mail Winners</button></p>
 	<script type="application/javascript">
 	
 		/* Randomize array in-place using Durstenfeld shuffle algorithm */
@@ -86,13 +89,8 @@ function lionslotto_display_logged_in_admin_info()
 			}
 		}
 	
-		function generateResult()
+		function autoSetFormMonth()
 		{
-			let ticket_count = <?php echo $tickets_sold; ?>;
-
-			if( ticket_count > 2 )
-			{
-			
 			var d = new Date();
 			var month_n = d.getMonth();
 			
@@ -111,6 +109,16 @@ month_names[9] = "OCTOBER";
 month_names[10] = "NOVEMBER";
 month_names[11] = "DECEMBER";
 			formdata["result-month"].value = month_names[month_n];
+		}
+	
+		function generateResult()
+		{
+			let ticket_count = <?php echo $tickets_sold; ?>;
+
+			if( ticket_count > 2 )
+			{
+			
+				autoSetFormMonth();
 			
 			var ticket_array = [];
 			for( i = 0; i < ticket_count; ++i)
@@ -119,6 +127,7 @@ month_names[11] = "DECEMBER";
 			}
 			shuffleArray(ticket_array);
 			
+			let formdata = document.forms["lf-set-result-form"];
 			formdata["result1"].value = ticket_array[0] + 1;
 			formdata["result2"].value = ticket_array[1] + 1;
 			formdata["result3"].value = ticket_array[2] + 1;
@@ -208,6 +217,8 @@ month_names[11] = "DECEMBER";
 			}
 			return false;
 		}
+		
+		 autoSetFormMonth();
 	</script>
 	<?php
 }

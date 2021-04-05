@@ -749,7 +749,21 @@ function set_lotto_result(WP_REST_Request $request)
 	$error_message = "unknown_error";	
 	$result_valid = false;
 	
-	//must be for month not set yet
+	//must be for a month not set yet
+	$results_for_month = $wpdb->get_results(
+		"
+		SELECT *
+		FROM wp_lotto_results
+		WHERE month='$result_month'
+		");
+	
+	if( isset($results_for_month) && count($results_for_month) > 0)
+	{
+		//$debug = var_export($results_for_month, true);
+		
+		$error_message = "Result is already set for ".$result_month;//." ".count($results_for_month)." ".$debug;
+	}
+	else{
 	//the next expected month
 	//results all different
 	if( isset($result_1) &&
@@ -783,6 +797,7 @@ function set_lotto_result(WP_REST_Request $request)
 		else{
 			$error_message = "database error";
 		}
+	}
 	}
 	
 	if( $result_valid )
