@@ -50,7 +50,7 @@ function get_next_number( WP_REST_Request $request )
 	{
 		return array( 		
 		 'success' => true,
-		 'number' => $row->ID,
+		 'number' => $ticket_id,
 		);
 	}
 	else{
@@ -729,28 +729,84 @@ function set_lotto_result(WP_REST_Request $request)
 }
 
 
-function create_table(WP_REST_Request $request)
+function do_debug(WP_REST_Request $request)
 {
 	global $wpdb;
 	
+	$user_id = get_current_user_id();
+	
+	$numbers_table = $wpdb->prefix."lotto_numbers";
+	$results = $wpdb->get_results(
+		"        
+		SELECT *
+        FROM $numbers_table
+        WHERE user_id=$user_id
+		AND state='BOUGHT'
+		"
+	);
+	
+	if( isset($results) )
+	{
+		$success = true;
+		$message = "count=".count($results);
+	}
+	else{
+		$success = false;
+		$message = "no results";
+	}
+	return array(
+		'success' => $success,
+		'msg' => $message,
+	);
+	
+	/*
 	//get month
 	//r1,r2,r3
 	$name = $request->get_param( 'name' );
 		
 	$charset_collate = $wpdb->get_charset_collate();
 	$table_name = $wpdb->prefix.$name;
-	
+	$user_table = $wpdb->prefix.'users';
 	$success = $wpdb->query(		
 		"	
-		CREATE TABLE $table_name (
-			ID bigint(20) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY
-				)$charset_collate;
-		"
+			CREATE TABLE IF NOT EXISTS $table_name (
+				ID bigint(20) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+				display_value smallint(3) unsigned NOT NULL,				
+				state ENUM('UNUSED','LOCKED','BUYING','BOUGHT','BOUGHT_MANUALLY') DEFAULT 'UNUSED' NOT NULL,
+				state_change_time bigint unsigned,
+				user_id bigint(20) unsigned,
+				FOREIGN KEY (user_id) REFERENCES $user_table(ID)				
+			)$charset_collate;	
+		"	
 	);	
 	
-	return array(
-		'success' => $success,
-	);
+	if( $success )
+	{
+		$message = "created table";
+		$rows = $wpdb->get_results("SELECT * FROM $table_name");
+		if( !isset($rows) || count($rows) == 0)
+		{
+			for( $i = 1; $i <= 500; $i++)
+			{
+				$inserted = $wpdb->insert($table_name,
+					array(
+						'display_value' => $i,
+						)
+					);
+
+				if( !$inserted )
+				{
+					$success = false;
+					$message = "failed to insert";
+				}				
+			}
+		}
+	}
+	else{
+		$message = "table creation failed";
+	}
+	*/
+	
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -850,10 +906,10 @@ add_action( 'rest_api_init', function () {
 		)
 	);
 	
-	register_rest_route( 'lionslotto/v1', '/create-table', 
+	register_rest_route( 'lionslotto/v1', '/post-debug', 
 		array(
 			'methods' => 'POST',
-			'callback' => 'create_table',
+			'callback' => 'do_debug',
 			'permission_callback' => 'lionslotto_is_lottoadmin',
 		)
 	);

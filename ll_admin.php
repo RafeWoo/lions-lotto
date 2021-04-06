@@ -12,10 +12,10 @@ function lionslotto_display_debug_info()
 	
 	global $wpdb;
 	$wp_nonce = wp_create_nonce( 'wp_rest' );
-	$rest_url = get_site_url()."/wp-json/"."lionslotto/v1/create-table";
+	$rest_url = get_site_url()."/wp-json/"."lionslotto/v1/post-debug";
 	
 	?>
-	<h4>Debug Info</h4>
+	<h4>Debug Info 2</h4>
 	<form name="debug-form" onsubmit="return postDebug();">
 		<label for="name">Name: </label><input type="text" id="name" name="name" value="" /><br>
 		<input type="submit" id="set-result" name="set-result"  />
@@ -49,10 +49,10 @@ function lionslotto_display_debug_info()
 				(body) => {
 					if( body.success )
 					{
-						output_element.innerHTML = "success";
+						output_element.innerHTML = "success " + body.msg;
 					}
 					else{													
-						output_element.innerHTML = "error";
+						output_element.innerHTML = "error " + body.msg;
 					}
 				}						
 			)				

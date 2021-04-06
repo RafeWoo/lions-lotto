@@ -8,48 +8,42 @@ function lionslotto_init_database()
 	lionslotto_create_manual_purchases_table();  //for people who don't want to register
 }
 
-
 function lionslotto_create_numbers_table()
 {
 	global $wpdb;
 	$charset_collate = $wpdb->get_charset_collate();
 	$table_name = $wpdb->prefix.'lotto_numbers';
 	$user_table = $wpdb->prefix.'users';
-	$wpdb->query(		
+	
+	$success = $wpdb->query(		
 		"	
-		IF ( 
-			NOT EXISTS (
-				SELECT * 
-					FROM INFORMATION_SCHEMA.TABLES
-					WHERE TABLE_NAME = '$table_name'					
-				)			
-			)		
-		THEN
-			CREATE TABLE $table_name (
+			CREATE TABLE IF NOT EXISTS $table_name (
 				ID bigint(20) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
 				display_value smallint(3) unsigned NOT NULL,				
 				state ENUM('UNUSED','LOCKED','BUYING','BOUGHT','BOUGHT_MANUALLY') DEFAULT 'UNUSED' NOT NULL,
 				state_change_time bigint unsigned,
 				user_id bigint(20) unsigned,
 				FOREIGN KEY (user_id) REFERENCES $user_table(ID)				
-			)$charset_collate;
-			
-			SET @counter =1;
-							
-			WHILE @counter <= 500 DO				
-				INSERT INTO $table_name (display_value) VALUES (@counter);		
-				SET @counter = @counter + 1;
-			END WHILE ;
-			
-		END	IF
+			)$charset_collate;	
 		"	
 	);	
 	
-	/*
-//
-	AND TABLE_SCHEMA = 'testdb1'	not necessary to specify schema
-
-*/
+	if( $success )
+	{		
+		$rows = $wpdb->get_results("SELECT * FROM $table_name");
+		if( !isset($rows) || count($rows) == 0)
+		{
+			for( $i = 1; $i <= 500; $i++)
+			{
+				$wpdb->insert($table_name,
+					array(
+						'display_value' => $i,
+						)
+					);
+			}
+		}
+	}
+	
 	
 }
 
