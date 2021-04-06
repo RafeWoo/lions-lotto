@@ -428,7 +428,7 @@ function lionslotto_user_update()
 						//document.getElementById("ll_update").innerHTML = result.message;
 					}
 					else{
-						document.getElementById("ll_update").innerHTML = "something went wrong!";
+						//document.getElementById("ll_update").innerHTML = "something went wrong!";
 					}
 				
 				})
