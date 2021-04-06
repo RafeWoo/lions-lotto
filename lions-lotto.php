@@ -13,8 +13,8 @@ Text Domain: lions-lotto
 
 //As a user I want to be able to
 //buy tickets  		- done
-//view my tickets
-//view results
+//view my tickets   - done
+//view results      - done
 //set options
 	//email me about lionslotto results
 	//email me when time comes to renew
