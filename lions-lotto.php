@@ -3,7 +3,7 @@
 Plugin Name: lions-lotto
 Plugin URI: https://southamlions.org.uk
 Description: Provides Simple Lottery functionality.
-Version: 0.1
+Version: 0.04
 Author: david woo
 Author URI: https://southamlions.org.uk
 License: MIT
@@ -153,13 +153,12 @@ function reset_lapsed_locked_numbers()
 	
 	$time_now = time();	
 	$seconds_allowed = 900; //15 minutes to lock and purchase
-	
-	
-	
+		
+	$numbers_table = $wpdb->prefix."lotto_numbers";
 	
 	$wpdb->query( 
 		"
-		UPDATE wp_lotto_numbers 
+		UPDATE $numbers_table 
 		SET state = 'UNUSED', state_change_time = NULL, user_id = NULL		
 		WHERE (state = 'LOCKED' )
 		AND ($time_now - state_change_time) > $seconds_allowed		
@@ -168,11 +167,12 @@ function reset_lapsed_locked_numbers()
 	
 	//OR state = 'BUYING' //see if any started transactions have completed
 	
+	$stripe_purchases_table = $wpdb->prefix."lotto_stripe_purchases";
 	
 	$live_purchases = $wpdb->get_results(
 						"
 						SELECT ID,user_id
-						FROM wp_lotto_stripe_purchases				
+						FROM $stripe_purchases_table				
 						WHERE state='STARTED'
 						AND ($time_now - purchase_time) > $seconds_allowed
 						");

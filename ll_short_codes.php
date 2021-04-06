@@ -15,10 +15,11 @@ function get_available_numbers()
 {
 	global $wpdb;
 	
+	$numbers_table = $wpdb->prefix."lotto_numbers";
 	$results = $wpdb->get_results(
 		"        
 		SELECT ID, display_value 
-        FROM wp_lotto_numbers
+        FROM $numbers_table
         WHERE state = 'UNUSED'       
 		"
 	);
@@ -292,10 +293,10 @@ function calc_number_prize_string($ticket_id)
 	
 	//select from results where 1st and 2nd and 3rd
 	$prize_string = "";
-	
+	$results_table = $wpdb->prefix."lotto_results";
 	$winning_results = $wpdb->get_results("
 			SELECT *
-			FROM wp_lotto_results
+			FROM $results_table
 			WHERE first_id=$ticket_id
 			OR second_id=$ticket_id
 			OR third_id=$ticket_id
@@ -332,10 +333,11 @@ function lionslotto_display_user_ticket_info()
 	
 	$user_id = get_current_user_id();
 	
+	$numbers_table = $wpdb->prefix."lotto_numbers";
 	$results = $wpdb->get_results(
 		"        
 		SELECT *
-        FROM wp_lotto_numbers
+        FROM $numbers_table
         WHERE user_id=$user_id
 		AND state='BOUGHT'
 		"
@@ -443,10 +445,11 @@ function lionslotto_user_update()
 function lionslotto_view_results()
 {
 	global $wpdb;
+	$results_table = $wpdb->prefix."lotto_results";
 	$results = $wpdb->get_results(
 		"
 		SELECT *
-		FROM wp_lotto_results
+		FROM $results_table
 		"
 	);
 	

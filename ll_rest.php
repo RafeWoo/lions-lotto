@@ -6,7 +6,12 @@
 function get_next_available_ticket()
 {
 	global $wpdb;
-	$row = $wpdb->get_row("SELECT * FROM wp_lotto_numbers WHERE state = 'UNUSED'");
+	$numbers_table = $wpdb->prefix."lotto_numbers";
+	$row = $wpdb->get_row(
+		"SELECT * 
+		FROM $numbers_table 
+		WHERE state = 'UNUSED'
+		");
 	
 	if( isset($row) )
 	{
@@ -18,19 +23,16 @@ function get_next_number( WP_REST_Request $request )
 {
 	global $wpdb;
 
-
-	$success = false;
-	
+	$success = false;	
     $user_id = get_current_user_id();
-  
-  
-	
+  	
 	$ticket_id = get_next_available_ticket();
 	
+	$numbers_table = $wpdb->prefix."lotto_numbers";
 	if( isset($ticket_id) )
 	{
 		$success = $wpdb->update( 
-			'wp_lotto_numbers', 
+			$numbers_table, 
 			array( 
 				'state' => 'LOCKED',   
 				'state_change_time' => time(), 
@@ -68,7 +70,7 @@ function try_lock_number( WP_REST_Request $request )
     $user_id = get_current_user_id(); //$request->get_param( 'user_id' );
   
 	$locked = $wpdb->update( 
-		'wp_lotto_numbers', 
+		'wp_l  otto_numbers', 
 		array( 
 			'state' => 'LOCKED',   
 			'state_change_time' => time(), 
@@ -120,9 +122,9 @@ function create_checkout_session( WP_REST_Request $request ) {
 		//$token = random_int(0, PHP_INT_MAX);
 		
 		$purchase_start_time = time();
-		
+		$numbers_table = $wpdb->prefix."lotto_numbers";
 		$is_buying = $wpdb->update( 
-			'wp_lotto_numbers', 
+			$numbers_table, 
 			array( 
 				'state' => 'BUYING',   
 				'state_change_time' => $purchase_start_time,				
@@ -137,8 +139,9 @@ function create_checkout_session( WP_REST_Request $request ) {
 		
 		if( $is_buying )
 		{
+			$stripe_purchases_table = $wpdb->prefix."lotto_stripe_purchases";
 			
-			$inserted = $wpdb->insert('wp_lotto_stripe_purchases', 
+			$inserted = $wpdb->insert($stripe_purchases_table, 
 				array(
 					'number_id' => $ticket_id,
 					'user_id' => $user_id,
@@ -176,7 +179,7 @@ function create_checkout_session( WP_REST_Request $request ) {
 
 //TODO move this above and put purchase id into flow
 //And then update with session id here
-			$inserted = $wpdb->update('wp_lotto_stripe_purchases', 
+			$inserted = $wpdb->update($stripe_purchases_table, 
 				array(				
 					'session_id' => $session->id,					
 				),
@@ -226,9 +229,10 @@ function update_db_complete_purchase( $user_id, $purchase_id )
 	$bought = false;
 		
 	global $wpdb;
+	$stripe_purchases_table = $wpdb->prefix."lotto_stripe_purchases";
 	$purchase_info = $wpdb->get_row( "
 		SELECT session_id, number_id 
-		FROM wp_lotto_stripe_purchases 
+		FROM $stripe_purchases_table 
 		WHERE ID=$purchase_id   
 		AND user_id=$user_id
 		AND state='STARTED'
@@ -259,10 +263,10 @@ function update_db_complete_purchase( $user_id, $purchase_id )
 		{
 			$ticket_id = $purchase_info->number_id;
 			$purchase_complete_time = time();
-			
+			$numbers_table = $wpdb->prefix."lotto_numbers";
 			//TODO - TRANSACTIONs
 			$updated1 = $wpdb->update( 
-				'wp_lotto_numbers', 
+				$numbers_table, 
 				array( 
 					'state' => 'BOUGHT',   
 					'state_change_time' => $purchase_complete_time, 													
@@ -279,7 +283,7 @@ function update_db_complete_purchase( $user_id, $purchase_id )
 				
 				
 				$updated2 = $wpdb->update( 
-					'wp_lotto_stripe_purchases',
+					$stripe_purchases_table,
 					array( 
 						'state' => 'COMPLETE',
 						'purchase_time' => $purchase_complete_time,						
@@ -301,7 +305,7 @@ function update_db_complete_purchase( $user_id, $purchase_id )
 			{
 								
 				$updated2 = $wpdb->update( 
-					'wp_lotto_stripe_purchases',
+					$stripe_purchases_table,
 					array( 
 						'state' => 'UNASSIGNED',
 						'purchase_time' => $purchase_complete_time,						
@@ -330,10 +334,10 @@ function update_db_cancel_purchase($user_id, $purchase_id)
 {
 	global $wpdb;
 	
-	
+	$stripe_purchases_table = $wpdb->prefix."lotto_stripe_purchases";
 	$ticket_id = $wpdb->get_var( "
 		SELECT number_id 
-		FROM wp_lotto_stripe_purchases 
+		FROM $stripe_purchases_table 
 		WHERE ID=$purchase_id   
 		AND user_id=$user_id
 		AND state='STARTED'
@@ -343,7 +347,7 @@ function update_db_cancel_purchase($user_id, $purchase_id)
 	{
 	
 		$updated2 = $wpdb->update( 
-			'wp_lotto_stripe_purchases',
+			$stripe_purchases_table,
 			array(
 				'state' => 'CANCELLED',
 			),
@@ -355,9 +359,9 @@ function update_db_cancel_purchase($user_id, $purchase_id)
 		);
 	
 	
-	
+		$numbers_table = $wpdb->prefix."lotto_numbers";
 		$updated1 = $wpdb->update( 
-					'wp_lotto_numbers', 
+					$numbers_table, 
 					array( 
 						'state' => 'UNUSED',   
 						'state_change_time' => NULL,
@@ -448,8 +452,8 @@ function update_user_purchases( WP_REST_Request $request )
 	
 	//for each locked ticket with user id
 		//just put back to unused	
-		
-	$wpdb->update( 'wp_lotto_numbers',
+	$numbers_table = $wpdb->prefix."lotto_numbers";	
+	$wpdb->update( $numbers_table,
 			array( 
 				'state' => 'UNUSED',   
 				'state_change_time' => NULL,
@@ -462,11 +466,11 @@ function update_user_purchases( WP_REST_Request $request )
 	);
 	
 	
-	
+	$stripe_purchases_table = $wpdb->prefix."lotto_stripe_purchases";
 	$live_purchases = $wpdb->get_results(
 						"
 						SELECT ID 
-						FROM wp_lotto_stripe_purchases				
+						FROM $stripe_purchases_table				
 						WHERE user_id=$user_id
 						AND state='STARTED'
 						");
@@ -506,57 +510,7 @@ function update_user_purchases( WP_REST_Request $request )
 	//for each in buying state ticket with user id
 		//check if purchase complete
 		//otherwise set cancelled
-	/*
 	
-	$updated1 = $wpdb->update( 
-					'wp_lotto_numbers', 
-					array( 
-						'state' => 'UNUSED',   
-						'state_change_time' => NULL,
-						'user_id' => NULL,
-					), 
-					array( 
-						'ID' => $ticket_id,
-						'user_id' => $user_id,						
-						'state' => 'BUYING',		
-					)
-				);
-				
-	$updated2 = $wpdb->update( 
-		'wp_lotto_stripe_purchases',
-		array(
-			'state' => 'CANCELLED',
-		),
-		array(
-			'number_id' => $ticket_id,
-			'user_id' => $user_id,
-		)
-	);	
-	
-		//get all numbers locked state
-		//revert those to UNUSED
-		
-		//get all numbers in buying state
-		//cross reference with purchases
-		//if session_id exists and paid then complete
-		//else mark in purchase as cancelled
-		//or buying state
-		
-		
-			
-			
-	$cancelled = $updated1 and $updated2;
-	
-	$wpdb->query( 
-		"
-		UPDATE wp_lotto_numbers 
-		SET state = 'UNUSED', state_change_time = NULL, user_id = NULL		
-		WHERE (state = 'LOCKED' OR state = 'BUYING')
-		AND user_id = $user_id
-		"
-	);		
-		
-		*/
 	//if( $cancelled )
 	//{
 		return array( 
@@ -573,50 +527,6 @@ function update_user_purchases( WP_REST_Request $request )
 
 
 
-/* cancel any numbers in progress for user */
-/*
-function cancel_purchase( WP_REST_Request $request ) 
-{
-	global $wpdb;
-	
-	$user_id = get_current_user_id();
-			
-	$ticket_id = $request->get_param( 'ticket_id');	
-	
-		//get all numbers locked state
-		//revert those to UNUSED
-		
-		//get all numbers in buying state
-		//cross reference with purchases
-		//if session_id exists and paid then complete
-		//else mark in purchase as cancelled
-		//or buying state
-		
-		
-			
-			
-	$cancelled = $wpdb->query( 
-		"
-		UPDATE wp_lotto_numbers 
-		SET state = 'UNUSED', state_change_time = NULL, user_id = NULL		
-		WHERE (state = 'LOCKED' OR state = 'BUYING')
-		AND user_id = $user_id
-		"
-	);		
-		
-	if( $cancelled )
-	{
-		return array( 
-		 'success' => true,
-		);
-	}
-	else{
-		return array( 
-		 'success' => false,
-		);
-	}
-}
-*/
 
 function assign_ticket(WP_REST_Request $request)
 {
@@ -656,8 +566,9 @@ function assign_ticket(WP_REST_Request $request)
 			$updated2 = false;
 	
 			//mark as bought
+			$numbers_table = $wpdb->prefix."lotto_numbers";
 			$updated1 = $wpdb->update( 
-				'wp_lotto_numbers', 
+				$numbers_table, 
 				array( 
 					'state' => 'BOUGHT_MANUALLY',   
 					'state_change_time' => $purchase_complete_time, 													
@@ -673,8 +584,8 @@ function assign_ticket(WP_REST_Request $request)
 			if( $updated1 )
 			{
 				try{
-										
-					$updated2 = $wpdb->insert('wp_lotto_manual_purchases',
+					$man_purchases_table = $wpdb->prefix."lotto_manual_purchases";				
+					$updated2 = $wpdb->insert($man_purchases_table,
 						array(
 						'number_id' => $ticket_id,
 						'admin_id' => $admin_id,
@@ -750,10 +661,11 @@ function set_lotto_result(WP_REST_Request $request)
 	$result_valid = false;
 	
 	//must be for a month not set yet
+	$results_table = $wpdb->prefix."lotto_results";
 	$results_for_month = $wpdb->get_results(
 		"
 		SELECT *
-		FROM wp_lotto_results
+		FROM $results_table
 		WHERE month='$result_month'
 		");
 	
@@ -774,10 +686,10 @@ function set_lotto_result(WP_REST_Request $request)
 		$result_2 != $result_3 &&
 		$result_1 != $result_3 )
 	{
-		$table_name = 'wp_lotto_results';
+
 		$creation_time = time();
 		//insert results into database
-		$result_inserted = $wpdb->insert($table_name,
+		$result_inserted = $wpdb->insert($results_table,
 				array(
 					
 					'creation_time' => $creation_time,
@@ -814,6 +726,31 @@ function set_lotto_result(WP_REST_Request $request)
 		);
 	}
 	
+}
+
+
+function create_table(WP_REST_Request $request)
+{
+	global $wpdb;
+	
+	//get month
+	//r1,r2,r3
+	$name = $request->get_param( 'name' );
+		
+	$charset_collate = $wpdb->get_charset_collate();
+	$table_name = $wpdb->prefix.$name;
+	
+	$success = $wpdb->query(		
+		"	
+		CREATE TABLE $table_name (
+			ID bigint(20) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY
+				)$charset_collate;
+		"
+	);	
+	
+	return array(
+		'success' => $success,
+	);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -909,6 +846,14 @@ add_action( 'rest_api_init', function () {
 		array(
 			'methods' => 'POST',
 			'callback' => 'set_lotto_result',
+			'permission_callback' => 'lionslotto_is_lottoadmin',
+		)
+	);
+	
+	register_rest_route( 'lionslotto/v1', '/create-table', 
+		array(
+			'methods' => 'POST',
+			'callback' => 'create_table',
 			'permission_callback' => 'lionslotto_is_lottoadmin',
 		)
 	);

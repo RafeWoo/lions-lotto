@@ -13,9 +13,9 @@ function lionslotto_create_numbers_table()
 {
 	global $wpdb;
 	$charset_collate = $wpdb->get_charset_collate();
-	$table_name = $wpdb->prefix . 'lotto_numbers';
-	$wpdb->query(
-		
+	$table_name = $wpdb->prefix.'lotto_numbers';
+	$user_table = $wpdb->prefix.'users';
+	$wpdb->query(		
 		"	
 		IF ( 
 			NOT EXISTS (
@@ -31,7 +31,7 @@ function lionslotto_create_numbers_table()
 				state ENUM('UNUSED','LOCKED','BUYING','BOUGHT','BOUGHT_MANUALLY') DEFAULT 'UNUSED' NOT NULL,
 				state_change_time bigint unsigned,
 				user_id bigint(20) unsigned,
-				FOREIGN KEY (user_id) REFERENCES wp_users(ID)				
+				FOREIGN KEY (user_id) REFERENCES $user_table(ID)				
 			)$charset_collate;
 			
 			SET @counter =1;
@@ -58,6 +58,7 @@ function lionslotto_create_results_table()
 	global $wpdb;
 	$charset_collate = $wpdb->get_charset_collate();
 	$table_name = $wpdb->prefix . 'lotto_results';
+	$numbers_table = $wpdb->prefix."lotto_numbers";
 	$wpdb->query(		
 		"	
 		CREATE TABLE IF NOT EXISTS $table_name (
@@ -67,9 +68,9 @@ function lionslotto_create_results_table()
 			first_id bigint(20) unsigned,
 			second_id bigint(20) unsigned,
 			third_id bigint(20) unsigned,				
-			FOREIGN KEY (first_id) REFERENCES wp_lotto_numbers(ID),
-			FOREIGN KEY (second_id) REFERENCES wp_lotto_numbers(ID),
-			FOREIGN KEY (third_id) REFERENCES wp_lotto_numbers(ID)
+			FOREIGN KEY (first_id) REFERENCES $numbers_table(ID),
+			FOREIGN KEY (second_id) REFERENCES $numbers_table(ID),
+			FOREIGN KEY (third_id) REFERENCES $numbers_table(ID)
 		)$charset_collate;
 		"	
 	);	
@@ -80,6 +81,9 @@ function lionslotto_create_stripe_purchases_table()
 	global $wpdb;
 	$charset_collate = $wpdb->get_charset_collate();
 	$table_name = $wpdb->prefix . 'lotto_stripe_purchases';
+	
+	$numbers_table = $wpdb->prefix."lotto_numbers";
+	$user_table = $wpdb->prefix.'users';
 	$wpdb->query(		
 		"	
 		CREATE TABLE IF NOT EXISTS $table_name (
@@ -89,8 +93,8 @@ function lionslotto_create_stripe_purchases_table()
 			purchase_time bigint unsigned NOT NULL,						
 			session_id VARCHAR(128),
 			state ENUM('STARTED','COMPLETE','CANCELLED','UNASSIGNED') DEFAULT 'STARTED' NOT NULL,
-			FOREIGN KEY (number_id) REFERENCES wp_lotto_numbers(ID),
-			FOREIGN KEY (user_id) REFERENCES wp_users(ID)
+			FOREIGN KEY (number_id) REFERENCES $numbers_table(ID),
+			FOREIGN KEY (user_id) REFERENCES $user_table(ID)
 		)$charset_collate;
 		"	
 	);	
@@ -103,6 +107,9 @@ function lionslotto_create_manual_purchases_table()
 	$charset_collate = $wpdb->get_charset_collate();
 			
 	$table_name = $wpdb->prefix . 'lotto_manual_purchases';
+	$numbers_table = $wpdb->prefix."lotto_numbers";
+	$user_table = $wpdb->prefix.'users';
+	
 	$wpdb->query(		
 		"	
 		CREATE TABLE IF NOT EXISTS $table_name (
@@ -117,8 +124,8 @@ function lionslotto_create_manual_purchases_table()
 			user_address_2 VARCHAR(128),
 			user_address_3 VARCHAR(128),
 			user_postcode VARCHAR (10),
-			FOREIGN KEY (number_id) REFERENCES wp_lotto_numbers(ID),
-			FOREIGN KEY (admin_id) REFERENCES wp_users(ID)
+			FOREIGN KEY (number_id) REFERENCES $numbers_table(ID),
+			FOREIGN KEY (admin_id) REFERENCES $user_table(ID)
 			)$charset_collate;
 		"	
 	);	

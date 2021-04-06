@@ -5,7 +5,71 @@ add_shortcode( 'lionslotto-admin-display', 'lionslotto_display_admin_info');
 add_shortcode( 'lionslotto-admin-tickets', 'lionslotto_display_tickets');
 add_shortcode( 'lionslotto-admin-payments', 'lionslotto_display_payments');
 add_shortcode( 'lionslotto-admin-assign-ticket', 'lionslotto_display_assign_ticket_form');
+add_shortcode( 'lionslotto-debug', 'lionslotto_display_debug_info');
 
+function lionslotto_display_debug_info()
+{
+	
+	global $wpdb;
+	$wp_nonce = wp_create_nonce( 'wp_rest' );
+	$rest_url = get_site_url()."/wp-json/"."lionslotto/v1/create-table";
+	
+	?>
+	<h4>Debug Info</h4>
+	<form name="debug-form" onsubmit="return postDebug();">
+		<label for="name">Name: </label><input type="text" id="name" name="name" value="" /><br>
+		<input type="submit" id="set-result" name="set-result"  />
+	</form>
+	<p id="debug-output"></p>
+	<script type="application/javascript">
+		function postDebug()
+		{
+			let output_element = document.getElementById("debug-output");
+			let formdata = document.forms["debug-form"];
+							
+			const url = <?php echo "\"$rest_url\""; ?>;					
+			const nonce = <?php	echo "\"$wp_nonce\""; ?>;
+
+			output_element.innerHTML = "started";			
+			
+			fetch(	
+				url, 
+				{
+					method: 'POST',
+					body: new URLSearchParams(new FormData(formdata)), 
+						headers: {
+							'X-WP-Nonce': nonce			
+						},
+					}
+			).then(
+				(resp) => {
+					return resp.json(); // or resp.text() or whatever the server sends
+				}
+			).then(
+				(body) => {
+					if( body.success )
+					{
+						output_element.innerHTML = "success";
+					}
+					else{													
+						output_element.innerHTML = "error";
+					}
+				}						
+			)				
+			.catch( 
+				(error) => {					
+					output_element.innerHTML = "unknown exception";
+				}
+			);
+						
+			return false;
+		}
+	</script>
+	<?php
+	
+	// Current site prefix
+	echo "<p>$wpdb->prefix</p>";
+}
 
 function lionslotto_display_admin_info()
 {
@@ -20,11 +84,11 @@ function lionslotto_display_admin_info()
 function lionslotto_display_logged_in_admin_info()
 {
 	global $wpdb;
-	
+	$numbers_table = $wpdb->prefix."lotto_numbers";
 	$tickets_sold = $wpdb->get_var(
 			"        
 			SELECT COUNT(*)
-			FROM wp_lotto_numbers       
+			FROM $numbers_table       
 			WHERE (state='BOUGHT' OR state='BOUGHT_MANUALLY')
 			"
 		);
@@ -242,10 +306,11 @@ function lionslotto_display_tickets()
 	
 		$user_id = get_current_user_id();
 	
+		$numbers_table = $wpdb->prefix."lotto_numbers";
 		$results = $wpdb->get_results(
 			"        
 			SELECT *
-			FROM wp_lotto_numbers       
+			FROM $numbers_table       
 			WHERE (state='BOUGHT' OR state='BOUGHT_MANUALLY')
 			"
 		);
@@ -273,9 +338,10 @@ function lionslotto_display_tickets()
 		
 		if( $result->state == 'BOUGHT_MANUALLY' )
 		{
+			$man_purchases_table = $wpdb->prefix."lotto_manual_purchases";
 			$user_name = $wpdb->get_var("
 				SELECT user_name
-				FROM wp_lotto_manual_purchases
+				FROM $man_purchases_table
 				WHERE number_id=$result->ID				
 				");
 			echo "<td>$user_name</td>";
